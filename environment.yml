@@ -1,0 +1,30 @@
+name: tb-bfx
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.12
+  # Pipeline
+  - snakemake-minimal=7.16
+  - bwa=0.7.17
+  - picard=2.27.4  # can use picard-slim when R is not required
+  - fgbio-minimal=2.0.2
+  - fastqc=0.11.9
+  - multiqc=1.13a
+  - samtools=1.16.1
+  - fgsv=0.0.1
+  # pytomebio
+  - defopt=6.4.0
+  - pysam=0.19.1
+  - biopython=1.79
+  - samwell=0.0.4
+  # Testing
+  - pytest=7.1.2
+  - black=22.6.0
+  - flake8=4.0.1
+  - mypy=0.961
+  - shellcheck=0.8.0
+  - pip=22.3
+  - pip:
+    - fgpyo==0.0.4
