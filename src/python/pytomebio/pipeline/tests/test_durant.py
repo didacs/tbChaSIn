@@ -1,4 +1,4 @@
-"""Tests for the change-seq pipeline"""
+"""Tests for the cryptic-seq pipeline"""
 
 import yaml
 from pathlib import Path
@@ -10,15 +10,18 @@ from pytomebio.pipeline.tests import touch_path
 from pytomebio.pipeline.tests.util import run_snakemake
 
 
-def test_change_seq(tmpdir: TmpDir) -> None:
+def test_cryptic_seq(tmpdir: TmpDir) -> None:
     """Basic unit test that runs the snakefile in dry-run mode to ensure it
     parses correctly.
     """
 
     # Set up reference data
-    ref_fasta: Path = touch_path(Path(tmpdir) / "ref" / "ref.fasta")
+    ref_fasta: Path = touch_path(Path(tmpdir) / "ref" / "full.fasta")
     for ext in ["amb", "ann", "bwt", "pac", "sa"]:  # BWA files
         touch_path(Path(f"{ref_fasta}.{ext}"))
+    genome_fasta: Path = touch_path(Path(tmpdir) / "ref" / "genome.fasta")
+    for ext in ["amb", "ann", "bwt", "pac", "sa"]:  # BWA files
+        touch_path(Path(f"{genome_fasta}.{ext}"))
 
     # Set up FASTQs
     samples = ["foo", "bar", "two"]
@@ -28,19 +31,15 @@ def test_change_seq(tmpdir: TmpDir) -> None:
         touch_path(fq_dir / f"{sample}_R2_001.fastq.gz")
 
     rules: Dict[str, int] = {
-        "align": 3,
+        "align_full": 3,
+        "align_genome": 3,
         "all": 1,
-        "collate_sites": 1,
-        "fastq_to_bam": 3,
-        "fastqc": 6,
-        "fgsv_aggregatesvpileup": 3,
-        "fgsv_svpileup": 3,
+        "fastp": 3,
+        "filter_reads": 3,
         "find_sites": 3,
-        "mark_duplicates": 3,
-        "multiqc": 1,
-        "picard_collect_alignment_summary_metrics": 3,
-        "picard_collect_multiple_metrics": 3,
-        "trim_for_tn5me": 3,
+        "flagstat": 6,
+        "samtools_import": 3,
+        "trim_leading_r2": 3,
     }
 
     config: Dict[str, Any] = {
@@ -49,15 +48,20 @@ def test_change_seq(tmpdir: TmpDir) -> None:
                 "name": "first",
                 "fq_dir": f"{fq_dir}",
                 "ref_fasta": f"{ref_fasta}",
-                "attachment_sites": [
-                    "attB:CACCACGCGTGGCCGGCTTGTCGACGACGGCG:GT:CTCCGTCGTCAGGATCATCCGGGGATCCCGGG"
-                ],
+                "genome_fasta": f"{genome_fasta}",
+                "min_aln_score": 20,
+                "inter_site_slop": 10,
                 "samples": [
                     {
                         "name": "foo",
                         "replicate": 1,
                         "fq1": f"{fq_dir}/foo_R1_001.fastq.gz",
                         "fq2": f"{fq_dir}/foo_R2_001.fastq.gz",
+                        "stagger": "A",
+                        "donor_inner_primer": "CAGCGAGTCAGTGAGCGAGG",
+                        "umi_length": 0,
+                        "r1_adapter": "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA",
+                        "r2_adapter": "CTGTCTCTTATACACATCTGACGCTGCCGACGA",
                     }
                 ],
             },
@@ -65,22 +69,31 @@ def test_change_seq(tmpdir: TmpDir) -> None:
                 "name": "second",
                 "fq_dir": f"{fq_dir}",
                 "ref_fasta": f"{ref_fasta}",
-                "attachment_sites": [
-                    "attP:GCCGCTAGCGGTGGTTTGTCTGGTCAACCACCGCG:GT:"
-                    "GACCGGTAGCTGGGTTTGTACCGTACACCACTGAG"
-                ],
+                "genome_fasta": f"{genome_fasta}",
+                "min_aln_score": 15,
+                "inter_site_slop": 20,
                 "samples": [
                     {
                         "name": "bar",
                         "replicate": 1,
                         "fq1": f"{fq_dir}/bar_R1_001.fastq.gz",
                         "fq2": f"{fq_dir}/bar_R2_001.fastq.gz",
+                        "stagger": "",
+                        "donor_inner_primer": "GATTACA",
+                        "umi_length": 0,
+                        "r1_adapter": "ATTTATATAT",
+                        "r2_adapter": "TATATATATAT",
                     },
                     {
                         "name": "two",
                         "replicate": 2,
                         "fq1": f"{fq_dir}/two_R1_001.fastq.gz",
                         "fq2": f"{fq_dir}/two_R2_001.fastq.gz",
+                        "stagger": "T",
+                        "donor_inner_primer": "ACGT",
+                        "umi_length": 0,
+                        "r1_adapter": "CGCGCGCGC",
+                        "r2_adapter": "CGCGCGCGC",
                     },
                 ],
             },
@@ -89,10 +102,13 @@ def test_change_seq(tmpdir: TmpDir) -> None:
 
     config_yml: Path = Path(tmpdir) / "config.yml"
     with config_yml.open("w") as writer:
-        yaml.dump(config, writer, default_flow_style=False)
+        yaml.dump(config, writer)
+    with config_yml.open("r") as reader:
+        for line in reader:
+            print(line.rstrip())
 
     run_snakemake(
-        pipeline="change-seq",
+        pipeline="durant",
         workdir=tmpdir,
         rules=rules,
         config={"config_yml": config_yml},

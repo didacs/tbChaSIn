@@ -88,6 +88,6 @@ def run_snakemake(
 
     # check that all the expected rules were run
     for rule in rules:
-        assert rule in logger.rule_count
+        assert rule in logger.rule_count, f"rule was not run: {rule}"
 
     return logger

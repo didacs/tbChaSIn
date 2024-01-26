@@ -1,4 +1,4 @@
-import copy
+import yaml
 from attrs import define
 from pathlib import Path
 from typing import Any
@@ -8,40 +8,93 @@ from typing import List
 
 @define
 class Sample:
+    """Stores sample data needed by the pytomebio tools.
+
+    Attributes:
+        name: The name of the sample
+        group: The name of the group this sample is part of.
+        replicate: the whole number (e.g. 1, 2, 3, ...) specifying the replicate for this sample
+        fq1: The absolute path to the FASTQ for read 1 (R1)
+        fq2: The absolute path to the FASTQ for read 2 (R2)
+        ref_fasta: The absolute path to the reference FASTA, with accompanying BWA index files and
+                   FASTA index
+        attachment_sites: The list of attachment sites ("<name>:<left-seq>:<overhang>:<right-seq>")
+        extra: any additional sample metadata
+    """
+
     name: str
     group: str
-    fq_dir: Path
+    replicate: int
+    fq1: Path
+    fq2: Path
     ref_fasta: Path
-
-    @property
-    def fq1(self) -> Path:
-        return self.fq_dir / f"{self.name}_R1_001.fastq.gz"
-
-    @property
-    def fq2(self) -> Path:
-        return self.fq_dir / f"{self.name}_R2_001.fastq.gz"
+    attachment_sites: List[str]
+    extra: Dict[str, Any]
 
 
-def from_config(config: Dict[str, Any]) -> Dict[str, Sample]:
-    """Returns the list of samples from a snakemake config.
+def from_path(yml: Path) -> Dict[str, Sample]:
+    """Returns dict from sample name to Sample for all the samples in a snakemake config.
 
-    Todo: describe require structure.
+    The snakemake config must be a yaml with a "settings" object in the top level.
+    "settings" is a list of objects with group information:
+        "name": the group name
+        "ref_fasta": the absolute path to the reference used for every sample in this group
+        "attachment_sites": the list of attachment sites used for every sample in this group
+        "samples": a list of objects with specific information for each sample in the group
+            "name": the name of each sample
+            "replicate": the whole number (e.g. 1, 2, ...) specifying the replicate for this sample
+            "fq1": The absolute path to the FASTQ for read 1 (R1)
+            "fq2": The absolute path to the FASTQ for read 2 (R2)
+
+    Args:
+        yml: Path to yaml with snakemake config.
+    """
+    with yml.open("r") as reader:
+        config: Dict[str, Any] = yaml.safe_load(reader)
+    return _from_config(config=config)
+
+
+def _from_config(config: Dict[str, Any]) -> Dict[str, Sample]:
+    """Returns dict from sample name to Sample for all the samples in a snakemake config.
+
+    The snakemake config must be a yaml with a "settings" object in the top level.
+    "settings" is a list of objects with group information:
+        "name": the group name
+        "ref_fasta": the absolute path to the reference used for every sample in this group
+        "attachment_sites": the list of attachment sites used for every sample in this group
+        "samples": a list of objects with specific information for each sample in the group
+            "name": the name of each sample
+            "replicate": the whole number (e.g. 1, 2, ...) specifying the replicate for this sample
+            "fq1": The absolute path to the FASTQ for read 1 (R1)
+            "fq2": The absolute path to the FASTQ for read 2 (R2)
+
+    Args:
+        config: Dict object resulting from Path to yaml with snakemake config.
     """
 
     # Read in the samples from the config
     samples: List[Sample] = []
     for group in config["settings"]:
-        sample_names = group["samples"]
-        args_dict = copy.deepcopy(group)
-        del args_dict["samples"]
-        args_dict["group"] = args_dict["name"]
-        # convert keys that need to be type(Path)
-        for key in ["fq_dir", "ref_fasta"]:
-            args_dict[key] = Path(args_dict[key])
-        for name in sample_names:
-            # set sample name
-            args_dict["name"] = name
-            sample = Sample(**args_dict)
+        for sample_args_dict in group["samples"]:
+            # copy over values at the group level, and make sure to convert to the correct type
+            sample_args: Dict[str, Any] = {
+                "name": sample_args_dict["name"],
+                "group": group["name"],
+                "ref_fasta": Path(group["ref_fasta"]),
+                "attachment_sites": group.get("attachment_sites", []),
+                "fq1": Path(sample_args_dict["fq1"]),
+                "fq2": Path(sample_args_dict["fq2"]),
+                "replicate": int(sample_args_dict["replicate"]),
+            }
+            sample_args["extra"] = {
+                key: value for key, value in sample_args_dict.items() if key not in sample_args
+            }
+            for key, value in group.items():
+                if key == "samples":
+                    continue
+                sample_args["extra"][key] = value
+            # create the sample and add it to the list
+            sample = Sample(**sample_args)
             samples.append(sample)
 
     sample_dict: Dict[str, Sample] = {sample.name: sample for sample in samples}

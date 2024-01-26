@@ -4,11 +4,14 @@ from collections import Counter
 from fgpyo.util.metric import Metric
 from itertools import groupby
 from pathlib import Path
+from typing import ClassVar
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
 
+from pytomebio.pipeline.samples import Sample as ConfigSample
+from pytomebio.pipeline.samples import from_path
 from pytomebio.tools.change_seq.find_sites import FindSitesMetric
 
 
@@ -17,40 +20,37 @@ class Sample:
     """Stores information about a sample inferred from the path
 
     Attributes:
+        group: the sample group
         sample: the sample name
         replicate: the replicate number
-        number: the sample number
-        metircs: the metrics associate with this sample
+        metrics: the metrics associate with this sample
     """
 
-    sample: str
+    group: str
+    name: str
     replicate: Optional[int]
-    number: Optional[int]
     metrics: List[FindSitesMetric]
 
-    @property
-    def name(self) -> str:
-        if self.replicate is None:
-            return self.sample
-        else:
-            return f"{self.sample}_rep{self.replicate}_S{self.number}"
+    REPLICATE_PATTERNS: ClassVar[List[str]] = ["_rep\\d+_", "-rep\\d-"]
+    SAMPLE_NUMBER_PATTERNS: ClassVar[List[str]] = ["_S\\d+_", "_S\\d+$"]
 
     @classmethod
-    def build(cls, path: Path) -> "Sample":
-        name = path.name
-        if name.endswith(".sites.txt"):
-            name = name[: -len(".sites.txt")]
-        fields = name.split("_")
-        sample = "_".join(fields[:-2])
-        replicate = int(fields[-2][3:])
-        number = int(fields[-1][1:])
-        metrics = list(FindSitesMetric.read(path))
-        return Sample(sample=sample, replicate=replicate, number=number, metrics=metrics)
+    def build(cls, config_sample: ConfigSample) -> "Sample":
+        txt = Path(f"{config_sample.group}/{config_sample.name}/{config_sample.name}.sites.txt")
+        metrics: List[FindSitesMetric] = list(FindSitesMetric.read(txt))
+        return Sample(
+            group=config_sample.group,
+            name=config_sample.name,
+            replicate=config_sample.replicate,
+            metrics=metrics,
+        )
 
 
 @frozen
 class CollateSitesMetric(Metric["CollateSitesMetric"]):
+    group: Optional[str]
     sample: str
+    replicate: Optional[int]
     count_geq_1x: int
     count_geq_5x: int
     count_geq_10x: int
@@ -63,7 +63,9 @@ class CollateSitesMetric(Metric["CollateSitesMetric"]):
     @classmethod
     def from_sample(cls, sample: Sample) -> "CollateSitesMetric":
         return CollateSitesMetric(
+            group=sample.group,
             sample=sample.name,
+            replicate=sample.replicate,
             count_geq_1x=sum(1 for m in sample.metrics if m.count >= 1),
             count_geq_5x=sum(1 for m in sample.metrics if m.count >= 5),
             count_geq_10x=sum(1 for m in sample.metrics if m.count >= 10),
@@ -75,9 +77,15 @@ class CollateSitesMetric(Metric["CollateSitesMetric"]):
         )
 
 
-def collate_sites(*, in_txt: List[Path], out_prefix: Path) -> None:
+def collate_sites(*, in_yml: Path, out_prefix: Path) -> None:
+    """Collates detected integration sites across samples.
 
-    """
+    The input config file must be the same config file used in the CHANGE-Seq and Cryptic-Seq
+    Snakemake pipelines.  Please refer to the top-level README for the current format.
+
+    The input sites file must contain a metrics file (from the `FindSitesMetric` class) and have
+    the following path based on the values in the inpute config:
+    `<sample-group>/<sample-name>/<sample-name>.sites.txt`
 
     The first table gives the # of sites with count >= X (column) for each sample (row).  This is
     output to `*.per_sample.txt`.
@@ -97,10 +105,13 @@ def collate_sites(*, in_txt: List[Path], out_prefix: Path) -> None:
     `*collated.txt`.
 
     Args:
-        in_txt: one or more *sites.txt files (output by `change-seq find-sites`)
+        in_yml: the input configuration YAML used in the CHANGE-Seq or Cryptic-Seq Snakemake
+                pipeline.
         out_prefix: the output prefix for all output files.
     """
-    samples = [Sample.build(path=path) for path in in_txt]
+    # Load in the samples using the pipeline config
+    config_sample_dict: Dict[str, ConfigSample] = from_path(yml=in_yml)
+    samples: List[Sample] = [Sample.build(config_sample=s) for s in config_sample_dict.values()]
 
     # Table 1
     CollateSitesMetric.write(
@@ -114,15 +125,16 @@ def collate_sites(*, in_txt: List[Path], out_prefix: Path) -> None:
     )
 
     # Table 3
-    for name, replicates in groupby(samples, lambda sample: sample.sample):
+    for (group, name), replicates in groupby(samples, lambda sample: (sample.group, sample.name)):
         CollateSitesMetric.write(
-            Path(f"{out_prefix}.replicates.{name}.txt"), *compute_metrics(samples=list(replicates))
+            Path(f"{out_prefix}.replicates.{group}.{name}.txt"),
+            *compute_metrics(samples=list(replicates)),
         )
 
     # Table 4
     unioned_replicates: List[Sample] = [
         union_replicates(replicates=list(replicates))
-        for _, replicates in groupby(samples, lambda sample: sample.sample)
+        for _, replicates in groupby(samples, lambda sample: (sample.group, sample.name))
     ]
     CollateSitesMetric.write(
         Path(f"{out_prefix}.by_num_samples.unioned_replicates.txt"),
@@ -180,11 +192,18 @@ def union_replicates(replicates: List[Sample]) -> Sample:
         total_count = total_counter[loci]
         mean_count = total_count // sample_count
         metric = FindSitesMetric(
-            reference_name=reference_name, position=position, count=mean_count, site_to_count=None
+            reference_name=reference_name,
+            position=position,
+            count=mean_count,
+            attachment_site="NA",
+            positive_strand=True,
+            left_to_count=Counter(),
+            right_to_count=Counter(),
+            both_to_count=Counter(),
         )
         metrics.append(metric)
     sample: Sample = Sample(
-        sample=replicates[0].sample, replicate=None, number=None, metrics=metrics
+        group=replicates[0].group, name=replicates[0].name, replicate=None, metrics=metrics
     )
     return sample
 
@@ -198,7 +217,9 @@ def compute_metrics(samples: List[Sample]) -> List[CollateSitesMetric]:
     metrics: List[CollateSitesMetric] = []
     for num_samples in range(1, len(samples) + 1):
         metric = CollateSitesMetric(
+            group=None,
             sample=f"{num_samples}",
+            replicate=None,
             count_geq_1x=min_count_to_counter[1][num_samples],
             count_geq_5x=min_count_to_counter[5][num_samples],
             count_geq_10x=min_count_to_counter[10][num_samples],

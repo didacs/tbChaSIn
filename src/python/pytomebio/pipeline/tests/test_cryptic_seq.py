@@ -1,4 +1,4 @@
-"""Tests for the change-seq pipeline"""
+"""Tests for the cryptic-seq pipeline"""
 
 import yaml
 from pathlib import Path
@@ -10,7 +10,7 @@ from pytomebio.pipeline.tests import touch_path
 from pytomebio.pipeline.tests.util import run_snakemake
 
 
-def test_change_seq(tmpdir: TmpDir) -> None:
+def test_cryptic_seq(tmpdir: TmpDir) -> None:
     """Basic unit test that runs the snakefile in dry-run mode to ensure it
     parses correctly.
     """
@@ -30,17 +30,20 @@ def test_change_seq(tmpdir: TmpDir) -> None:
     rules: Dict[str, int] = {
         "align": 3,
         "all": 1,
+        "change_seq_trim_for_tn5me": 3,
+        "cryptic_seq_trim_for_tn5me": 3,
         "collate_sites": 1,
-        "fastq_to_bam": 3,
+        "fgbio_clip_bam": 3,
+        "fgbio_fastq_to_bam": 3,
         "fastqc": 6,
-        "fgsv_aggregatesvpileup": 3,
-        "fgsv_svpileup": 3,
+        # "fgsv_aggregatesvpileup": 3,
+        # "fgsv_svpileup": 3,
         "find_sites": 3,
         "mark_duplicates": 3,
         "multiqc": 1,
         "picard_collect_alignment_summary_metrics": 3,
         "picard_collect_multiple_metrics": 3,
-        "trim_for_tn5me": 3,
+        "trim_leading_attachment_site": 3,
     }
 
     config: Dict[str, Any] = {
@@ -50,7 +53,7 @@ def test_change_seq(tmpdir: TmpDir) -> None:
                 "fq_dir": f"{fq_dir}",
                 "ref_fasta": f"{ref_fasta}",
                 "attachment_sites": [
-                    "attB:CACCACGCGTGGCCGGCTTGTCGACGACGGCG:GT:CTCCGTCGTCAGGATCATCCGGGGATCCCGGG"
+                    "attP:GTGGTTTGTCTGGTCAACCACCGCG:GT:CTCAGTGGTGTACGGTACAAACCCA"
                 ],
                 "samples": [
                     {
@@ -65,10 +68,7 @@ def test_change_seq(tmpdir: TmpDir) -> None:
                 "name": "second",
                 "fq_dir": f"{fq_dir}",
                 "ref_fasta": f"{ref_fasta}",
-                "attachment_sites": [
-                    "attP:GCCGCTAGCGGTGGTTTGTCTGGTCAACCACCGCG:GT:"
-                    "GACCGGTAGCTGGGTTTGTACCGTACACCACTGAG"
-                ],
+                "attachment_sites": ["attB:GGCCGGCTTGTCGACGACGGCG:GT:CTCCGTCGTCAGGATCATCCGG"],
                 "samples": [
                     {
                         "name": "bar",
@@ -89,10 +89,13 @@ def test_change_seq(tmpdir: TmpDir) -> None:
 
     config_yml: Path = Path(tmpdir) / "config.yml"
     with config_yml.open("w") as writer:
-        yaml.dump(config, writer, default_flow_style=False)
+        yaml.dump(config, writer)
+    with config_yml.open("r") as reader:
+        for line in reader:
+            print(line.rstrip())
 
     run_snakemake(
-        pipeline="change-seq",
+        pipeline="cryptic-seq",
         workdir=tmpdir,
         rules=rules,
         config={"config_yml": config_yml},

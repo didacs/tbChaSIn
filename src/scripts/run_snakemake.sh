@@ -43,7 +43,9 @@ if [ -z "${out_dir}" ]; then
     usage "Missing required parameter -o";
 fi
 if [ -n "${config_file}" ]; then
-    extra_args="--configfile $config_file";
+    config_file=$(realpath -e "${config_file}")
+    # shellcheck disable=SC2089
+    extra_args="--config config_yml=\"$config_file\"";
 fi
 
 
@@ -64,7 +66,7 @@ fi
 
 # Run Snakemake pipeline
 set -euo pipefail
-# shellcheck disable=SC2086
+# shellcheck disable=SC2086,SC2090
 snakemake \
   --printshellcmds \
   --reason \

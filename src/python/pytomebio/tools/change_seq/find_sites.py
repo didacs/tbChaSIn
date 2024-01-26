@@ -1,75 +1,46 @@
-from attr import frozen
-from collections import Counter
-from fgpyo.util.metric import Metric
 from pathlib import Path
-from samwell import sam
-from samwell.itertools import peekable
-from typing import Dict
-from typing import Optional
 from typing import List
+from typing import Optional
+
+from fgpyo.sam import Template
+from pysam import AlignedSegment
+
+from pytomebio.core.attachment_site import AttachmentSiteMatch
+from pytomebio.core.sites import FindSitesMetric
+from pytomebio.core.sites import Side
+from pytomebio.core.sites import SiteKey
+from pytomebio.core.sites import SitesGenerator
 
 
-@frozen
-class FindSitesMetric(Metric["FindSitesMetric"]):
-    reference_name: str
-    position: int
-    count: int
-    site_to_count: Optional[Dict[int, int]]
+class ChangeSeqSitesGenerator(SitesGenerator):
+    def __init__(self, intra_read_slop: int) -> None:
+        self.intra_read_slop = intra_read_slop
 
+    def get_key(self, template: Template) -> Optional[SiteKey]:
+        read1: AlignedSegment = template.r1
+        read2: AlignedSegment = template.r2
+        read1_pos = read1.reference_end if read1.is_reverse else read1.reference_start
+        read2_pos = read2.reference_end if read2.is_reverse else read2.reference_start
+        pos_diff = abs(read1_pos - read2_pos)
+        if pos_diff > self.intra_read_slop:
+            return None
+        tag_value: str = str(read1.get_tag(AttachmentSiteMatch.READ_MATCH_TAG))
+        site_match_r1 = AttachmentSiteMatch.from_sam_tag(tag_value)
+        position = (read1_pos + read2_pos) // 2
+        # whichever read pair has the "left side" (e.g. P) defines the strand
+        positive_strand = not (read1.is_reverse if site_match_r1.is_left else read2.is_reverse)
 
-def aggregate_sites(sites: Dict[str, Counter], slop: int) -> List[FindSitesMetric]:
-    """Aggregates sites within the slop away from each other.
-
-    The position will be set as the site with the highest read count.
-
-    Args:
-        sites: the sites to aggregate
-        slop: the maximum distance for two sites to be aggregated
-    """
-    # the list of aggregated sites
-    agg_sites: List[FindSitesMetric] = []
-    for reference_name, counter in sites.items():
-
-        # running stats about a given aggregated site
-        prev_site_pos: int = -abs(slop) - 1  # the position of the most recent site encountered
-        running_count: int = 0  # the running count of read pairs for the aggregated site
-        cur_sites: Dict[int, int] = {}  # the positions and counts for sites being aggregated
-        max_count_pos: int = -1  # the position of the site with the highest count in the set
-        max_count: int = -1  # the count of read pairs for the site with the highest count
-        for pos, count in sorted(counter.items(), key=lambda tup: tup[0]):
-
-            if pos - prev_site_pos > slop:  # new site
-                if prev_site_pos > 0:  # add the previous site
-                    site = FindSitesMetric(
-                        reference_name=reference_name,
-                        position=max_count_pos,
-                        count=running_count,
-                        site_to_count=cur_sites,
-                    )
-                    agg_sites.append(site)
-                # re-initialize
-                max_count = -1
-                cur_sites = {}
-
-            # add the current position to the site being aggregated
-            prev_site_pos = pos
-            running_count += count
-            cur_sites[pos] = count
-            if max_count < count:
-                max_count = count
-                max_count_pos = pos
-
-        # add the last site found
-        assert prev_site_pos > 0
-        site = FindSitesMetric(
-            reference_name=reference_name,
-            position=max_count_pos,
-            count=running_count,
-            site_to_count=cur_sites,
+        return SiteKey(
+            reference_name=read1.reference_name,
+            position=position,
+            attachment_site=site_match_r1.site.name,
+            positive_strand=positive_strand,
         )
-        agg_sites.append(site)
 
-    return agg_sites
+    def get_side(self, template: Template) -> Optional[Side]:
+        # for Change-Seq, both sides of the integration are observed in one template, so always
+        # return `Side.Both`.
+        return Side.Both
 
 
 def find_sites(
@@ -78,12 +49,12 @@ def find_sites(
     out_txt: Path,
     intra_read_slop: int = 5,
     inter_site_slop: int = 5,
-    min_mapq: int = 20
+    min_mapq: int = 20,
 ) -> None:
     """Finds integration sites by examining read pair alignments.
 
     The read pairs are assumed to have the leading attachment site trimmed, without the overhang
-    trimmed (see tomebio-tools tomechange-seq fastq-to-bam).
+    trimmed (see tomebio-tools change-seq fastq-to-bam).
 
     The integration site should occur at the first sequenced base in each read in a read pair. Thus
     each read pair is examined and a site is called if the genomic position of the first sequenced
@@ -105,64 +76,14 @@ def find_sites(
         min_mapq: the minimum mapping quality to consider for a read pair
     """
 
-    with sam.reader(in_bam, file_type=sam.SamFileType.BAM) as reader:
-        assert (
-            reader.header["HD"].get("SO") == "queryname"
-            or reader.header["HD"].get("GO") == "query"
-        ), "Input BAM must be queryname sorted or query grouped"
+    site_generator = ChangeSeqSitesGenerator(intra_read_slop=intra_read_slop)
 
-        # Stores the raw sites, unaggregated.  Mapping from contig name to a Counter, where each
-        # Counter stores the count of reads for a given site's position.
-        raw_sites: Dict[str, Counter] = {}
+    all_sites: List[FindSitesMetric] = site_generator.generate(
+        in_bam=in_bam,
+        inter_site_slop=inter_site_slop,
+        min_mapq=min_mapq,
+        use_duplicates=True,
+        same_reference=True,
+    )
 
-        # Read in all records with the same name
-        piter = peekable(iter(reader))
-        while piter.can_peek():
-            first = next(piter)
-            records = [first]
-            while piter.can_peek() and piter.peek().query_name == first.query_name:
-                records.append(next(piter))
-
-            if len(records) <= 1:
-                for record in records:
-                    print(record)
-            read1 = next(
-                r for r in records if r.is_read1 and not r.is_secondary and not r.is_supplementary
-            )
-            read2 = next(
-                r for r in records if r.is_read2 and not r.is_secondary and not r.is_supplementary
-            )
-
-            if read1.is_unmapped or read2.is_unmapped:
-                continue
-            if read1.reference_name != read2.reference_name:
-                continue
-            if read1.mapping_quality < min_mapq or read2.mapping_quality < min_mapq:
-                continue
-
-            # get the position of the first base _sequenced_
-            read1_pos = read1.reference_start if read1.is_forward else read1.reference_end
-            read2_pos = read1.reference_start if read1.is_forward else read1.reference_end
-            pos_diff = abs(read1_pos - read2_pos)
-            if pos_diff > intra_read_slop:
-                continue
-            pos = (read1_pos + read2_pos) // 2
-
-            if read1.reference_name not in raw_sites:
-                raw_sites[read1.reference_name] = Counter()
-            counter = raw_sites[read1.reference_name]
-            counter[pos] = counter[pos] + 1
-
-        # Aggregate sites
-        all_sites: List[FindSitesMetric] = aggregate_sites(sites=raw_sites, slop=inter_site_slop)
-
-        # Sort the sites by reference_name
-        reference_name_to_int: Dict[str, int] = {
-            name: i for i, name in enumerate(reader.header.references)
-        }
-        all_sites = sorted(
-            all_sites, key=lambda m: (reference_name_to_int[m.reference_name], m.position)
-        )
-
-        # Write the metrics
-        FindSitesMetric.write(out_txt, *all_sites)
+    FindSitesMetric.write(out_txt, *all_sites)

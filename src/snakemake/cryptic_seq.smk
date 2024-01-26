@@ -1,5 +1,5 @@
 ################################################################################
-# Pipeline for CHANGE Seq Analysis
+# Pipeline for CRYPTIC Seq Analysis
 ################################################################################
 
 from pathlib import Path
@@ -32,7 +32,6 @@ extensions = [
     "alignment_summary_metrics.txt",
     "mark_duplicates.txt",
     "quality_yield_metrics.txt",  # for picard CollectMultipleMetrics
-    "svpileup.aggregated.txt",
     "sites.txt"
 ]
 
@@ -45,6 +44,7 @@ all_terminal_files: List[Path] = [
 
 all_terminal_files.append(Path("sequencing_quality_report.html"))
 all_terminal_files.append(Path("sites.per_sample.txt"))
+
 
 ################################################################################
 # Snakemake rules
@@ -59,52 +59,105 @@ rule all:
     input:
         all_terminal_files,
 
+rule fgbio_fastq_to_bam:
+    """Convert FASTQ to BAM and extract UMI information.
 
-rule fastq_to_bam:
-    """Converts the input FASTQs to an unmapped BAM
-    
     Runs:
-    - tomebio-tools change-seq fastq-to-bam
+    - fgbio's FastqToBam
     """
     input:
         fq1 = lambda wildcards: sample_dict[wildcards.sample].fq1,
         fq2 = lambda wildcards: sample_dict[wildcards.sample].fq2,
-    output:
-        keep_bam   = "{group}/{sample}/{sample}.fastq_to_bam.keep.bam",
-        reject_bam = "{group}/{sample}/{sample}.fastq_to_bam.reject.bam",
-        metric_tsv = "{group}/{sample}/{sample}.fastq_to_bam.metrics.tsv"
     params:
-        attachment_sites = lambda wildcards: sample_dict[wildcards.sample].attachment_sites
-    log: "logs/{group}/{sample}.fastq_to_bam.log"
+        read_structure = "11M+T 11M+T"  # TODO: make user configurable
+    output:
+        bam = "{group}/{sample}/{sample}.raw.bam"
+    log: "logs/{group}/{sample}.fgbio_fastq_to_bam.log"
     resources:
-        mem_gb = 2
+        mem_gb = 4,
+        jvm_gb = 4
     shell:
         """
-        tomebio-tools change-seq fastq-to-bam \
-            --r1 {input.fq1} \
-            --r2 {input.fq2} \
-            --keep-bam {output.keep_bam} \
-            --reject-bam {output.reject_bam} \
-            --metric-tsv {output.metric_tsv} \
-            --read-group {wildcards.sample} \
-            --threads 4 \
+        fgbio \
+          -Dsamjdk.use_async_io_read_samtools=true \
+          -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
+          FastqToBam \
+          --input {input.fq1} {input.fq2} \
+          --output {output.bam} \
+          --read-structure {params.read_structure} \
+          --sample {wildcards.sample} \
+          --library {wildcards.sample} \
+        &> {log}
+        """
+
+rule cryptic_seq_trim_for_tn5me:
+    """Trims the start of R1s for the Tn5 mosaic end.
+
+    Runs:
+    - tomebio-tools cryptic-seq trim-for-tn5me
+    """
+    input:
+        bam="{group}/{sample}/{sample}.raw.bam",
+    output:
+        keep="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
+        reject="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.reject.bam",
+        metric_tsv="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.metrics.tsv"
+    log: "logs/{group}/{sample}.cryptic_seq.trim_for_tn5me.log"
+    resources:
+        mem_gb=2
+    shell:
+        """
+        tomebio-tools cryptic-seq trim-for-tn5me \
+            --in-bam {input.bam} \
+            --keep-bam {output.keep} \
+            --reject-bam {output.reject} \
+            --out-metrics {output.metric_tsv} \
+        &> {log}
+        """
+
+rule trim_leading_attachment_site:
+    """Trims the start of R2s for the leading attachment site.
+
+    Runs:
+    - tomebio-tools cryptic-seq trim-leading-attachment-site
+    """
+    input:
+        bam="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
+    params:
+        attachment_sites = lambda wildcards: sample_dict[wildcards.sample].attachment_sites
+    output:
+        keep="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
+        reject="{group}/{sample}/{sample}.trim_leading_attachment_site.reject.bam",
+        metric_tsv="{group}/{sample}/{sample}.trim_leading_attachment_site.metrics.tsv"
+    log: "logs/{group}/{sample}.trim_leading_attachment_site.log"
+    resources:
+        mem_gb=2
+    shell:
+        """
+        tomebio-tools cryptic-seq trim-leading-attachment-site \
+            --in-bam {input.bam} \
+            --keep-bam {output.keep} \
+            --reject-bam {output.reject} \
+            --out-metrics {output.metric_tsv} \
             --attachment-site {params.attachment_sites} \
         &> {log}
         """
 
+# TODO: min score is set low
+rule change_seq_trim_for_tn5me:
+    """Trims the end of R2s for the Tn5 mosaic end.
 
-rule trim_for_tn5me:
-    """Trims the ends of reads for the Tn5 mosaic end and palindromic sequence
+    The change-seq tool trims both ends, but this should be fine.
 
     Runs:
     - tomebio-tools change-seq trim-for-tn5me
     """
     input:
-        bam="{group}/{sample}/{sample}.fastq_to_bam.keep.bam",
+        bam="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
     output:
-        bam="{group}/{sample}/{sample}.trim_for_tn5me.bam",
-        metric_tsv="{group}/{sample}/{sample}.trim_for_tn5me.metrics.tsv"
-    log: "logs/{group}/{sample}.trim_for_tn5me.log"
+        bam="{group}/{sample}/{sample}.change_seq.trim_for_tn5me.bam",
+        metric_tsv="{group}/{sample}/{sample}.change_seq.trim_for_tn5me.metrics.tsv"
+    log: "logs/{group}/{sample}.change_seq.trim_for_tn5me.log"
     resources:
         mem_gb=2
     shell:
@@ -113,8 +166,11 @@ rule trim_for_tn5me:
             --in-bam {input.bam} \
             --out-bam {output.bam} \
             --out-metrics {output.metric_tsv} \
+            --min-score 12 \
+            --no-is-circularized \
         &> {log}
         """
+
 
 rule align:
     """Aligns the reads in the unmapped BAM to the reference genome and coordinate sorts
@@ -129,7 +185,7 @@ rule align:
     - samtools sort
     """
     input:
-        bam = "{group}/{sample}/{sample}.trim_for_tn5me.bam",
+        bam = "{group}/{sample}/{sample}.change_seq.trim_for_tn5me.bam",
         ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
         bwa_files = lambda wildcards: [Path(f"{sample_dict[wildcards.sample].ref_fasta}.{ext}") for ext in ["amb", "ann", "bwt", "pac", "sa"]]
     output:
@@ -152,15 +208,48 @@ rule align:
         """
 
 
-# TODO: use --BARCODE_TAG RX if UMIs are present
+rule fgbio_clip_bam:
+    """Clip reads in FR pairs that sequence past the far end of their mate
+
+    Runs:
+    - fgbio ClipBam
+    """
+    input:
+        bam = "{group}/{sample}/{sample}.mapped.bam",
+        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta
+    output:
+        bam = "{group}/{sample}/{sample}.clipped.bam",
+        txt = "{group}/{sample}/{sample}.clipped.txt",
+    log: "logs/{group}/{sample}.fgbio_clip_bam.log"
+    resources:
+        mem_gb=12,
+        jvm_gb=8
+    shell:
+        """
+        samtools sort -n -u {input.bam} \
+        | fgbio \
+          -Dsamjdk.use_async_io_read_samtools=true \
+          -Duse_async_io_write_samtools=true \
+          -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
+          ClipBam \
+          --input /dev/stdin \
+          --ref {input.ref_fasta} \
+          --output {output.bam} \
+          --metrics {output.txt} \
+          --clipping-mode=Soft \
+          --clip-bases-past-mate=true \
+          --sort-order=Coordinate \
+        &> {log}
+        """
+
 rule mark_duplicates:
     """Marks PCR duplicates
-    
+
     Runs:
     - picard MarkDuplicates
     """
     input:
-        bam = "{group}/{sample}/{sample}.mapped.bam"
+        bam = "{group}/{sample}/{sample}.clipped.bam"
     output:
         bam = "{group}/{sample}/{sample}.deduped.bam",
         txt = "{group}/{sample}/{sample}.mark_duplicates.txt",
@@ -181,15 +270,16 @@ rule mark_duplicates:
           --METRICS_FILE {output.txt} \
           --CREATE_INDEX \
           --TMP_DIR {output.tmp_dir} \
+          --BARCODE_TAG RX \
         &> {log}
         """
 
 
 rule picard_collect_alignment_summary_metrics:
     """Collect alignment summary metrics.
-    
+
     Note: this tools is not run as part of picard CollectMultipleMetrics as the plotting of the
-    former tool fails on empty BAM files, and there's no way to skip generating plots in the 
+    former tool fails on empty BAM files, and there's no way to skip generating plots in the
     latter tool.  Thus we run this tool on its own without plotting output (HISTOGRAM argument).
 
     Runs:
@@ -220,7 +310,7 @@ rule picard_collect_alignment_summary_metrics:
 
 rule picard_collect_multiple_metrics:
     """Collect basic sequencing quality metrics.
-    
+
     Runs:
     - picard CollectMultipleMetrics
     """
@@ -260,10 +350,10 @@ rule picard_collect_multiple_metrics:
 
 rule fastqc:
     """Collect pre-alignment sequencing quality control
-    
+
     Note: run as a single thread since FASTQC only parallelizes
     across files, so adding threading doesn't help here.
-    
+
     Runs:
     - fastqc
     """
@@ -290,11 +380,10 @@ rule fastqc:
         ) &> {log}
         """
 
-
 # TODO: Customize the MultiQC config?
 rule multiqc:
     """Aggregates metrics into a HTML (MultiQC) report
-    
+
     Runs:
     - MultiQC
     """
@@ -314,66 +403,11 @@ rule multiqc:
         "multiqc {params.directory} --force --no-ansi --filename {output.multiqc_report} &> {log}"
 
 
-rule fgsv_svpileup:
-    """Collates a pileup of putative structural variant supporting reads.
-
-    Runs:
-    - fgsv SvPileup
-    """
-    input:
-        bam = "{group}/{sample}/{sample}.deduped.bam"
-    output:
-        txt = "{group}/{sample}/{sample}.svpileup.txt",
-        bam = "{group}/{sample}/{sample}.svpileup.bam"
-    params:
-        prefix = "{group}/{sample}/{sample}.svpileup",
-    log: "logs/{group}/{sample}.fgsv_svpileup.log"
-    resources:
-        mem_gb=5,
-        jvm_gb=4
-    shell:
-        """
-        fgsv \
-          -Dsamjdk.use_async_io_read_samtools=true \
-          -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
-          SvPileup \
-          --input={input.bam} \
-          --output={params.prefix} \
-        &> {log}
-        """
-
-
-rule fgsv_aggregatesvpileup:
-    """Merges nearby pileups of reads supporting putative breakpoints.
-
-    Runs:
-    - fgsv AggregateSvPileup
-    """
-    input:
-        txt = "{group}/{sample}/{sample}.svpileup.txt"
-    output:
-        txt = "{group}/{sample}/{sample}.svpileup.aggregated.txt",
-    log: "logs/{group}/{sample}.fgsv_aggregatesvpileup.log"
-    resources:
-        mem_gb=5,
-        jvm_gb=4
-    shell:
-        """
-        fgsv \
-          -Dsamjdk.use_async_io_read_samtools=true \
-          -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
-          AggregateSvPileup \
-          --input={input.txt} \
-          --output={output.txt} \
-        &> {log}
-        """
-
-
 rule find_sites:
     """Finds putative integration sties.
 
     Runs:
-    - tomebio-tools change-seq find-sites
+    - tomebio-tools cryptic-seq find-sites
     """
     input:
         bam="{group}/{sample}/{sample}.deduped.bam",
@@ -387,7 +421,7 @@ rule find_sites:
         samtools sort \
          -n \
          {input.bam} \
-         | tomebio-tools change-seq find-sites \
+         | tomebio-tools cryptic-seq find-sites \
          --in-bam - \
          --out-txt {output.tsv} \
         &> {log}

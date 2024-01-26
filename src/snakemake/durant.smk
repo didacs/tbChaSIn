@@ -1,0 +1,256 @@
+################################################################################
+# Pipeline for Durant et al. re-analysis
+################################################################################
+
+from pathlib import Path
+from typing import Dict
+from typing import List
+
+from pytomebio.pipeline import snakemake_utils
+from pytomebio.pipeline.samples import Sample
+from pytomebio.pipeline.samples import from_path
+
+################################################################################
+# Utility methods and variables
+################################################################################
+
+yml: Path = Path(config["config_yml"])
+sample_dict: Dict[str, Sample] = from_path(yml=yml)
+samples: List[Sample] = list(sample_dict.values())
+
+################################################################################
+# Terminal files
+################################################################################
+
+
+# File extensions to generate
+extensions = [
+    "with_donor.mapped.flagstat.txt",
+    "genome.mapped.flagstat.txt",
+    "sites.txt"
+]
+
+all_terminal_files: List[Path] = [
+    Path(f"{sample.group}/{sample.name}/{sample.name}.{ext}")
+    for sample in samples
+    for ext in extensions
+]
+
+################################################################################
+# Snakemake rules
+################################################################################
+
+onerror:
+    """Block of code that gets called if the snakemake pipeline exits with an error."""
+    snakemake_utils.on_error(snakefile=Path(__file__), config=config, log=Path(log))
+
+
+rule all:
+    input:
+        all_terminal_files
+
+
+rule trim_leading_r2:
+    input:
+        r1 = lambda wildcards: sample_dict[wildcards.sample].fq1,
+        r2 = lambda wildcards: sample_dict[wildcards.sample].fq2
+    output:
+        r1_keep = "{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
+        r2_keep = "{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
+        r1_reject = "{group}/{sample}/{sample}.trim_leading_r2.reject.R1.fq.gz",
+        r2_reject = "{group}/{sample}/{sample}.trim_leading_r2.reject.R2.fq.gz",
+        txt = "{group}/{sample}/{sample}.trim_leading_r2.metrics.txt"
+    params:
+        out_prefix = "{group}/{sample}/{sample}.trim_leading_r2",
+        stagger = lambda wildcards: sample_dict[wildcards.sample].extra["stagger"],
+        donor_inner_primer = lambda wildcards: sample_dict[wildcards.sample].extra["donor_inner_primer"]
+    log: "logs/{group}/{sample}.trim_leading_r2.log"
+    shell:
+        """
+        (
+        tomebio-tools durant trim-leading-r2 \
+          --in-r1-fq {input.r1} --in-r2-fq {input.r2} \
+          --out-prefix {params.out_prefix} \
+          --stagger '{params.stagger}' \
+          --donor-inner-primer {params.donor_inner_primer} 
+        ) &> {log}
+        """
+
+
+rule fastp:
+    input:
+        r1 = "{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
+        r2 = "{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
+    output:
+        r1 = "{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
+        r2 = "{group}/{sample}/{sample}.R2.no_adapters.fastq.gz",
+        html = "{group}/{sample}/{sample}.fastp.html",
+        json = "{group}/{sample}/{sample}.fastp.json"
+    params:
+        r1_adapter = lambda wildcards: sample_dict[wildcards.sample].extra["r1_adapter"],
+        r2_adapter = lambda wildcards: sample_dict[wildcards.sample].extra["r2_adapter"]
+    log: "logs/{group}/{sample}.fastp.log"
+    threads: 5 if len(sample_dict) > 1 else 10
+    shell:
+        """
+        (
+        fastp --thread {threads} -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} \
+            --adapter_sequence="{params.r1_adapter}" \
+            --adapter_sequence_r2="{params.r2_adapter}" \
+            --html {output.html} \
+            --json {output.json}
+        ) &> {log}
+        """
+
+rule samtools_import:
+    input:
+        r1 = "{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
+        r2 = "{group}/{sample}/{sample}.R2.no_adapters.fastq.gz"
+    output:
+        bam = "{group}/{sample}/{sample}.unmapped.bam"
+    log: "logs/{group}/{sample}.samtools_import.log"
+    shell:
+        """
+        (
+        samtools import --output-fmt BAM -1 {input.r1} -2 {input.r2} > {output.bam}
+        ) &> {log}
+        """
+
+rule align_full:
+    """Aligns the reads to the genome with the donor contig appended
+
+    Important: runs with -Y so hard-clipping is not performed on supplementary alignments,
+    but instead soft-clipping.  This is important to retain all bases for downstream analysis.
+
+    Runs:
+    - samtools fastq
+    - bwa mem
+    - fgbio ZipperBams
+    - samtools sort
+    """
+    input:
+        bam = "{group}/{sample}/{sample}.unmapped.bam",
+        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta
+    output:
+        bam = "{group}/{sample}/{sample}.with_donor.mapped.bam"
+    params:
+        min_aln_score = lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"]
+    log: "logs/{group}/{sample}.align.log"
+    threads: 16
+    shell:
+        """
+        (samtools fastq -N {input.bam} \
+          | bwa mem -T {params.min_aln_score} -Y -K 320000000 -t {threads} -p {input.ref_fasta} - \
+          | fgbio -Xmx4g --compression 0 ZipperBams --unmapped {input.bam} --ref {input.ref_fasta} \
+          | samtools sort -n -m 2G -@ {threads} -o {output.bam} --write-index
+        ) &> {log}
+        """
+
+rule filter_reads:
+    """Filters for reads with integration site evidence.
+
+    Runs:
+    - tomebio-tools durant filter-reads
+    """
+    input:
+        bam="{group}/{sample}/{sample}.with_donor.mapped.bam"
+    output:
+        keep_bam = "{group}/{sample}/{sample}.filter_reads.keep.bam",
+        reject_bam = "{group}/{sample}/{sample}.filter_reads.reject.bam",
+    log: "logs/{group}/{sample}.find_sites.log"
+    shell:
+        """
+        tomebio-tools durant filter-reads \
+         --in-bam {input.bam} \
+         --keep-bam {output.keep_bam} \
+         --reject-bam {output.reject_bam} \
+        &> {log}
+        """
+
+rule align_genome:
+    """Aligns the reads to the genome only
+
+    Important: runs with -Y so hard-clipping is not performed on supplementary alignments,
+    but instead soft-clipping.  This is important to retain all bases for downstream analysis.
+
+    Runs:
+    - samtools fastq
+    - bwa mem
+    - samtools sort
+    """
+    input:
+        bam = "{group}/{sample}/{sample}.filter_reads.keep.bam",
+        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].extra["genome_fasta"]
+    output:
+        bam = "{group}/{sample}/{sample}.genome.mapped.bam"
+    params:
+        min_aln_score = lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"]
+    log: "logs/{group}/{sample}.align.log"
+    threads: 16
+    shell:
+        """
+        (samtools fastq -N {input.bam} \
+          | bwa mem -T {params.min_aln_score} -Y -K 320000000 -t {threads} -p {input.ref_fasta} - \
+          | samtools sort -n -m 2G -@ {threads} -o {output.bam} --write-index
+        ) &> {log}
+        """
+
+rule flagstat:
+    input:
+        bam = "{group}/{sample}/{sample}.{foo}.mapped.bam"
+    output:
+        txt = "{group}/{sample}/{sample}.{foo}.mapped.flagstat.txt"
+    log: "logs/{group}/{sample}.{foo}.flagstat.log"
+    shell:
+        """
+        (
+        samtools flagstat {input.bam} > {output.txt}
+        ) &> {log}
+        """
+
+rule find_sites:
+    """Finds putative integration sties.
+
+    Runs:
+    - tomebio-tools durant find-sites
+    """
+    input:
+        bam = "{group}/{sample}/{sample}.genome.mapped.bam"
+    output:
+        tsv = "{group}/{sample}/{sample}.sites.txt"
+    params:
+        inter_site_slop = lambda wildcards: sample_dict[wildcards.sample].extra["inter_site_slop"]
+    log: "logs/{group}/{sample}.find_sites.log"
+    shell:
+        """
+        tomebio-tools durant find-sites \
+         --in-bam {input.bam} \
+         --out-txt {output.tsv} \
+         --inter-site-slop {params.inter_site_slop} \
+        &> {log}
+        """
+
+# FIXME: need config to enable this rule
+#rule collate_sites:
+#    """Collates tables for identified integration sites across samples and replicates.
+#
+#    Runs:
+#    - tomebio-tools common collate-sites
+#    """
+#    input:
+#        yml=yml,
+#        txt=[f"{sample.name}/{sample.name}.sites.txt" for sample in samples]
+#    output:
+#        tsv="sites.per_sample.txt"
+#    params:
+#        out_pre="sites"
+#    log: "logs/collate_sites.log"
+#    resources:
+#        mem_gb=2
+#    shell:
+#        """
+#        tomebio-tools common collate-sites \
+#         --in-yml {input.yml} \
+#         --out-prefix {params.out_pre} \
+#        &> {log}
+#        """

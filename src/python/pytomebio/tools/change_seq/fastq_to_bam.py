@@ -10,78 +10,20 @@ from pysam import AlignmentFile
 from pysam import AlignmentHeader
 from pysam import FastxFile
 from pysam import FastxRecord
-from samwell.dnautils import reverse_complement
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Iterator
 
-
-@frozen
-class AttachmentSite:
-    """Models an attachment site (i.e. attP and attB)
-
-    Attributes:
-        name: the name of the attachment site
-        left: the sequence on the left side, in sequencing order, including overhang
-        right: the sequence on the right side, in sequencing order, including overhang
-    """
-
-    name: str
-    left: str
-    right: str  # typically, reverse complemented
-
-
-def setup_aligner() -> Align.PairwiseAligner:
-    """Creates a glocal aligner (partial query, full target) using BWA mem inspired scoring
-    parameters"""
-    # Gapped alignment parameters
-    # NB: setting zero for the query_end* options effectively makes this glocal, allowing gaps
-    # after the end of the target (can open gaps at the end of the query)
-    aligner: Align.PairwiseAligner = Align.PairwiseAligner()
-    aligner.mode = "global"
-    aligner.match_score = 1
-    aligner.mismatch_score = -4
-    aligner.open_gap_score = -7
-    aligner.extend_gap_score = -1
-    aligner.query_internal_open_gap_score = -7
-    aligner.query_internal_extend_gap_score = -1
-    aligner.query_end_open_gap_score = 0
-    aligner.query_end_extend_gap_score = 0
-    aligner.target_internal_open_gap_score = -7
-    aligner.target_internal_extend_gap_score = -1
-    aligner.target_end_open_gap_score = -7
-    aligner.target_end_extend_gap_score = -1
-    return aligner
-
-
-@frozen
-class Match:
-    """Stores a read alignment to an attachment site.
-
-    Attributes:
-        site: the attachment site
-        is_left: true if aligned to the left side of the attachment site, false for the right
-        score: the alignment score
-        alignment_length: the length of the alignment for the query (i.e. leading number of bases
-                          to trim) including any leading query offset
-    """
-
-    site: AttachmentSite
-    is_left: bool
-    score: int
-    alignment_length: int
-
-    def to_sam_tag(self) -> str:
-        """Returns the SAM tag-value for this match"""
-        side_label = "left" if self.is_left else "right"
-        return f"{self.site.name};{side_label};{self.alignment_length};{self.score}"
+from pytomebio.core.attachment_site import AttachmentSite
+from pytomebio.core.attachment_site import AttachmentSiteMatch
+from pytomebio.core.aligner import get_query_prefix_aligner
 
 
 @frozen
 class UngappedAligner:
     """Utility class for ungapped alignment.
-
     Attributes:
         sites: the list of sites to align to
         min_score: the minimum alignment score to keep an alignment
@@ -99,7 +41,40 @@ class UngappedAligner:
     max_read_start_offset: int
     max_target_start_offset: int
 
-    def align(self, rec: FastxRecord) -> Optional[Match]:
+    def _iter_attachment_site_matches(self, rec: FastxRecord) -> Iterator[AttachmentSiteMatch]:
+        """Iterate over all allowed ungapped AttachmentSiteMatches so the optimal alignement can be
+        chosen from among them.
+
+        Args:
+            rec: the read to align
+        """
+        # Iterate over all allowed ungapped AttachmentSiteMatches
+        full_read = rec.sequence.upper()
+        for site in self.sites:
+            for read_start_offset in range(0, self.max_read_start_offset + 1):
+                read = full_read[read_start_offset:]
+                for target_start_offset in range(0, self.max_target_start_offset + 1):
+                    # left side of the side
+                    target_left = site.left[target_start_offset:]
+                    yield AttachmentSiteMatch(
+                        site=site,
+                        is_left=True,
+                        score=self.score(read, target_left),
+                        alignment_length=min(len(read), len(target_left)),
+                        read_start_offset=read_start_offset,
+                    )
+
+                    # right side of the site
+                    target_right = site.right[target_start_offset:]
+                    yield AttachmentSiteMatch(
+                        site=site,
+                        is_left=False,
+                        score=self.score(read, target_right),
+                        alignment_length=min(len(read), len(target_right)),
+                        read_start_offset=read_start_offset,
+                    )
+
+    def align(self, rec: FastxRecord) -> Optional[AttachmentSiteMatch]:
         """Aligns the given read to both the left and right sides of each site, as well as up to
         the maximum read and target start offset respectively.  Returns the best alignment with
         at least the minimum score.
@@ -107,55 +82,17 @@ class UngappedAligner:
         Args:
             rec: the read to align
         """
-        best: Optional[Match] = None
+        # find best match by maximizing score, using alignment_length as a tie-breaker:
+        best = max(
+            self._iter_attachment_site_matches(rec=rec),
+            default=None,
+            key=lambda attachment_site_match: (
+                attachment_site_match.score,
+                attachment_site_match.alignment_length,
+            ),
+        )
 
-        full_read = rec.sequence.upper()
-        for site in self.sites:
-            for read_start_offset in range(0, self.max_read_start_offset + 1):
-                for target_start_offset in range(0, self.max_target_start_offset + 1):
-                    read = full_read[read_start_offset:]
-
-                    # left side of the side
-                    target_left = site.left[target_start_offset:]
-                    left_score = self.score(read, target_left)
-                    left_alignment_len = min(len(read), len(target_left))
-                    if (
-                        best is None
-                        or left_score > best.score
-                        or (
-                            left_score == best.score and left_alignment_len > best.alignment_length
-                        )
-                    ):
-                        best = Match(
-                            site=site,
-                            is_left=True,
-                            score=left_score,
-                            alignment_length=left_alignment_len + read_start_offset,
-                        )
-
-                    # right side of the site
-                    target_right = site.right[target_start_offset:]
-                    right_score = self.score(read, target_right)
-                    right_alignment_len = min(len(read), len(target_right))
-                    if (
-                        best is None
-                        or right_score > best.score
-                        or (
-                            right_score == best.score
-                            and right_alignment_len > best.alignment_length
-                        )
-                    ):
-                        best = Match(
-                            site=site,
-                            is_left=False,
-                            score=right_score,
-                            alignment_length=right_alignment_len + read_start_offset,
-                        )
-
-        if best is None or best.score < self.min_score:
-            return None
-        else:
-            return best
+        return None if best is None or best.score < self.min_score else best
 
     def score(self, s1: str, s2: str) -> int:
         """Returns the ungapped alignment score of the two sequences"""
@@ -170,8 +107,8 @@ def to_aligned_segment(
     header: AlignmentHeader,
     read_group: str,
     is_r1: bool,
-    read_match: Optional[Match],
-    mate_match: Optional[Match],
+    read_match: Optional[AttachmentSiteMatch],
+    mate_match: Optional[AttachmentSiteMatch],
 ) -> AlignedSegment:
     """Converts the given FASTQ record into SAM, adding appropriate SAM tags.
 
@@ -213,8 +150,12 @@ def to_aligned_segment(
     # Tags
     attrs = dict()
     attrs["RG"] = read_group
-    attrs["rm"] = "None" if read_match is None else read_match.to_sam_tag()
-    attrs["mm"] = "None" if mate_match is None else mate_match.to_sam_tag()
+    attrs[AttachmentSiteMatch.READ_MATCH_TAG] = (
+        "None" if read_match is None else read_match.to_sam_tag()
+    )
+    attrs[AttachmentSiteMatch.MATE_MATCH_TAG] = (
+        "None" if mate_match is None else mate_match.to_sam_tag()
+    )
     rec.set_tags(list(attrs.items()))
 
     return rec
@@ -226,7 +167,7 @@ def perform_gapped_rescue(
     aligner: Align.PairwiseAligner,
     rescue_prefix_len: int,
     min_score: int,
-) -> Optional[Match]:
+) -> Optional[AttachmentSiteMatch]:
     """Performs gapped alignment of the read across the given sites.
 
     Only performs the alignment if the prefixes of the read and site sequence match up to the given
@@ -240,11 +181,16 @@ def perform_gapped_rescue(
                            exactly match to perform gapped alignment
         min_score: the minimum alignment score for a returned alignment
     """
-    match: Optional[Match] = None
+    match: Optional[AttachmentSiteMatch] = None
+    assert rescue_prefix_len > 0, "rescue_prefix_len must be greater than 0"
     for site in sites:
         if full_read[:rescue_prefix_len] == site.left[:rescue_prefix_len]:
             match = gapped_alignment(
-                full_read=full_read, site=site, is_left=True, aligner=aligner, min_score=min_score
+                full_read=full_read,
+                site=site,
+                is_left=True,
+                aligner=aligner,
+                min_score=min_score,
             )
         elif full_read[:rescue_prefix_len] == site.right[:rescue_prefix_len]:
             match = gapped_alignment(
@@ -261,7 +207,7 @@ def gapped_alignment(
     is_left: bool,
     aligner: Align.PairwiseAligner,
     min_score: int,
-) -> Optional[Match]:
+) -> Optional[AttachmentSiteMatch]:
     """Performs pairwise gapped alignment returning a match if found.
 
     Args:
@@ -277,9 +223,11 @@ def gapped_alignment(
         return None
     alignment = alignments[0]
     aligned = alignment.aligned
+    if len(aligned[0]) == 0:
+        return None  # got an empty alignment
     # the last aligned base in the read/query is the number of bases we have to trim off
     alignment_length = aligned[0][-1][-1]
-    match: Match = Match(
+    match: AttachmentSiteMatch = AttachmentSiteMatch(
         site=site, is_left=is_left, score=alignment.score, alignment_length=alignment_length
     )
     return match
@@ -308,7 +256,10 @@ class MatchingMetric(Metric["MatchingMetric"]):
     rejected: int = 0
 
     def update(
-        self, r1_match: Optional[Match], r2_match: Optional[Match], rescued_attempted: bool
+        self,
+        r1_match: Optional[AttachmentSiteMatch],
+        r2_match: Optional[AttachmentSiteMatch],
+        rescued_attempted: bool,
     ) -> bool:
         """Updates the counts for read matching.
 
@@ -342,8 +293,14 @@ def fastq_to_bam(
     reject_bam: Path,
     metric_tsv: Path,
     read_group: str,
+    attachment_site: List[AttachmentSite],
     threads: int = 1,
-) -> None:
+    _min_score: int = 16,
+    _rescue_prefix_len: int = 16,
+    _max_read_start_offset: int = 3,
+    _max_target_start_offset: int = 3,
+    _gapped_rescue: bool = True,
+) -> MatchingMetric:
     """Convert FASTQ to BAM for CHANGE-Seq.
 
     Matches the start of each read to each side of each attachment site using ungapped alignment.
@@ -368,56 +325,49 @@ def fastq_to_bam(
         reject_bam: the path to the output BAM with discarded reads
         metric_tsv: the path to the output TSV with matching metrics
         read_group: the read group identifier to use
+        attachment_site: one or more attachment sites (e.g. attB, attP).  Each
+                         attachment site is a colon-delimited quadruple of
+                         `<name>:<left_seq>:<overhang>:<right_seq>` where
+                         `<left_seq><overhang><right_seq>`
+                         is the full attachment site sequence.
         threads: threads to use for compressing the BAMs
+        _min_score: the minimum alignment score to accept
+        _rescue_prefix_len: require this number of leading bases between the read and site sequence
+                            before trying gapped rescue
+        _max_read_start_offset: the maximum offset from the start of the read for the ungapped
+                                alignment to start
+        _max_target_start_offset: the maximum offset from the start of the target for the ungapped
+                                  alignment to start
+        _gapped_rescue: true to use gapped rescue, false otherwise
     """
+    # Args with underscores are fixed tool parameters not exposed to the command line, intended to
+    # be changed in testing.
+
     logger = logging.getLogger(__name__)
-
-    ##############################################################################
-    # Fixed tool parameters.  These could be exposed on the command line.
-    ##############################################################################
-
-    # the minimum alignment score to accept
-    min_score: int = 16
-    # the maximum offset from the start of the read for the alignment to start
-    max_read_start_offset: int = 3
-    # the maximum offset from the start of the target for the alignment to start
-    max_target_start_offset: int = 3
-    # true to use gapped rescue, false otherwise
-    gapped_rescue: bool = True
-    # require this number of leading bases between the read and site sequence before trying
-    # gapped rescue
-    rescue_prefix_len: int = 16
 
     ##############################################################################
     # Definitions of the attachment sites.
     ##############################################################################
-    # These could be specified as CSV/TSV file, for example:
     # name,left,overhang,right
-    # attB,CACCACGCGTGGCCGGCTTGTCGACGACGGCG,GT,CTCCGTCGTCAGGATCATCCGGGGATCCCGGG
-    # attP,GCCGCTAGCGGTGGTTTGTCTGGTCAACCACCGCG,GT,CTCAGTGGTGTACGGTACAAACCCAGCTACCGGTC
-    attB = AttachmentSite(
-        name="attB",
-        left="CACCACGCGTGGCCGGCTTGTCGACGACGGCG",
-        right=reverse_complement("CTCCGTCGTCAGGATCATCCGGGGATCCCGGG"),
-    )
-    attP = AttachmentSite(
-        name="attP",
-        left="GCCGCTAGCGGTGGTTTGTCTGGTCAACCACCGCG",
-        right=reverse_complement("CTCAGTGGTGTACGGTACAAACCCAGCTACCGGTC"),
-    )
+    # attB:CACCACGCGTGGCCGGCTTGTCGACGACGGCG:GT:CTCCGTCGTCAGGATCATCCGGGGATCCCGGG
+    # attP:GCCGCTAGCGGTGGTTTGTCTGGTCAACCACCGCG:GT:CTCAGTGGTGTACGGTACAAACCCAGCTACCGGTC
+
+    # check that have at least one attachment site that was successfully added to the list
+    assert len(attachment_site) >= 1, "Must specify at least one attachment site"
 
     ##############################################################################
     # build the class to match attachment sites to the starts of reads
     ##############################################################################
-    aligner = setup_aligner()  # setup up the glocal aligner
+    aligner = get_query_prefix_aligner()
     matcher = UngappedAligner(
-        sites=[attB, attP],
-        min_score=min_score,
+        sites=attachment_site,
+        min_score=_min_score,
         match_score=aligner.match_score,
         mismatch_score=aligner.mismatch_score,
-        max_read_start_offset=max_read_start_offset,
-        max_target_start_offset=max_target_start_offset,
+        max_read_start_offset=_max_read_start_offset,
+        max_target_start_offset=_max_target_start_offset,
     )
+
     ##############################################################################
     # Set up the output SAM/BAM
     ##############################################################################
@@ -427,16 +377,19 @@ def fastq_to_bam(
     }
     sam_header: AlignmentHeader = AlignmentHeader.from_dict(sam_header_dict)
 
-    # open the output files
-    fh_out_keep = AlignmentFile(str(keep_bam), "wb", header=sam_header, threads=threads)
-    fh_out_reject = AlignmentFile(str(reject_bam), "wb", header=sam_header, threads=threads)
-
     ##############################################################################
     # main loop
     ##############################################################################
     record_number: int = 1
     metric: MatchingMetric = MatchingMetric()
-    with FastxFile(str(r1_fq)) as r1_fh, FastxFile(str(r2_fq)) as r2_fh:
+    with (
+        # open read1 and read2 fastq files for reading
+        FastxFile(str(r1_fq)) as r1_fh,
+        FastxFile(str(r2_fq)) as r2_fh,
+        # open keep / reject bams for writing
+        AlignmentFile(str(keep_bam), "wb", header=sam_header, threads=threads) as fh_out_keep,
+        AlignmentFile(str(reject_bam), "wb", header=sam_header, threads=threads) as fh_out_reject,
+    ):
         for r1, r2 in zip(r1_fh, r2_fh):
             assert r1.name == r2.name, (
                 f"Error: FASTQ names disagreed for the {record_number}th entry"
@@ -445,13 +398,13 @@ def fastq_to_bam(
 
             # ungapped alignment, allowing the alignment to start offset from the start of the read
             # or target
-            r1_match: Optional[Match] = matcher.align(rec=r1)
-            r2_match: Optional[Match] = matcher.align(rec=r2)
+            r1_match: Optional[AttachmentSiteMatch] = matcher.align(rec=r1)
+            r2_match: Optional[AttachmentSiteMatch] = matcher.align(rec=r2)
 
             # Gapped alignment is expensive, so we try not do that above. Nonetheless, there are
             # some reads that would have been perfectly fine with gapped alignment
             rescued_attempted = False
-            if gapped_rescue and (r1_match is None or r2_match is None):
+            if _gapped_rescue and (r1_match is None or r2_match is None):
                 rescued_attempted = True
                 # If one read has a match and the other one doesn't, we could try a gapped
                 # alignment to the other end of that site
@@ -461,7 +414,7 @@ def fastq_to_bam(
                         site=r1_match.site,
                         is_left=(not r1_match.is_left),
                         aligner=aligner,
-                        min_score=min_score,
+                        min_score=_min_score,
                     )
                 elif r1_match is None and r2_match is not None:
                     r1_match = gapped_alignment(
@@ -469,7 +422,7 @@ def fastq_to_bam(
                         site=r2_match.site,
                         is_left=(not r2_match.is_left),
                         aligner=aligner,
-                        min_score=min_score,
+                        min_score=_min_score,
                     )
 
                 # If the read matches a shorter sequence (e.g. 16bp), then we could try a gapped
@@ -479,16 +432,16 @@ def fastq_to_bam(
                         full_read=r1.sequence,
                         sites=matcher.sites,
                         aligner=aligner,
-                        rescue_prefix_len=rescue_prefix_len,
-                        min_score=min_score,
+                        rescue_prefix_len=_rescue_prefix_len,
+                        min_score=_min_score,
                     )
                 if r2_match is None:
                     r2_match = perform_gapped_rescue(
                         full_read=r2.sequence,
                         sites=matcher.sites,
                         aligner=aligner,
-                        rescue_prefix_len=rescue_prefix_len,
-                        min_score=min_score,
+                        rescue_prefix_len=_rescue_prefix_len,
+                        min_score=_min_score,
                     )
 
             # Create the output BAM records
@@ -532,11 +485,10 @@ def fastq_to_bam(
                 )
             record_number += 1
 
-    fh_out_keep.close()
-    fh_out_reject.close()
-
     MatchingMetric.write(metric_tsv, metric)
 
     logger.info(f"Read {record_number:,d} paired end reads.")
     logger.info(f"Wrote {metric.valid:,d} paired end reads to {keep_bam}")
     logger.info(f"Wrote {metric.rejected:,d} paired end reads to {reject_bam}")
+
+    return metric

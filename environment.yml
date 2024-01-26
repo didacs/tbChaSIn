@@ -16,8 +16,8 @@ dependencies:
   - fgsv=0.0.1
   # pytomebio
   - defopt=6.4.0
-  - pysam=0.19.1
-  - biopython=1.79
+  - pysam=0.20.0
+  - biopython=1.81
   - samwell=0.0.4
   # Testing
   - pytest=7.1.2
@@ -25,6 +25,7 @@ dependencies:
   - flake8=4.0.1
   - mypy=0.961
   - shellcheck=0.8.0
+  - types-pyyaml=6.0.12.2
   - pip=22.3
-  - pip:
-    - fgpyo==0.0.4
+  - fgpyo=0.0.6
+  - fastp=0.23.2
