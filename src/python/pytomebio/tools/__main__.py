@@ -9,10 +9,8 @@ from typing import Optional
 
 import defopt
 
-from pytomebio.tools.change_seq.fastq_to_bam import (
-    fastq_to_bam as change_seq_fastq_to_bam,
-    AttachmentSite,
-)
+from pytomebio.tools.change_seq.fastq_to_bam import AttachmentSite
+from pytomebio.tools.change_seq.fastq_to_bam import fastq_to_bam as change_seq_fastq_to_bam
 from pytomebio.tools.change_seq.find_sites import find_sites as change_seq_find_sites
 from pytomebio.tools.change_seq.trim_for_tn5me import trim_for_tn5me as change_seq_trim_for_tn5me
 from pytomebio.tools.common.collate_sites import collate_sites as common_collate_sites
@@ -21,9 +19,9 @@ from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me as cryptic
 from pytomebio.tools.cryptic_seq.trim_leading_attachment_site import (
     trim_leading_attachment_site as cryptic_trim_leading_attachment_site,
 )
+from pytomebio.tools.durant.filter_reads import filter_reads as durant_filter_reads
 from pytomebio.tools.durant.find_sites import find_sites as durant_find_sites
 from pytomebio.tools.durant.trim_leading_r2 import trim_leading_r2 as durant_trim_leading_r2
-from pytomebio.tools.durant.filter_reads import filter_reads as durant_filter_reads
 
 TOOLS: Dict[str, List[Callable]] = {
     "common": [common_collate_sites],

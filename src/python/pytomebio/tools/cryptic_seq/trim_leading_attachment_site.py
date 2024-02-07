@@ -1,18 +1,19 @@
 import logging
-from Bio import Align
 from collections import Counter
-from fgpyo.sam import Template
 from pathlib import Path
-from pysam import AlignmentFile
-from samwell import sam
-from samwell.dnautils import reverse_complement
-from typing import List
 from typing import Iterator
+from typing import List
 from typing import Optional
 
+from Bio import Align
+from fgpyo import sam
+from fgpyo.sam import Template
+from fgpyo.sequence import reverse_complement
+from pysam import AlignmentFile
+
+from pytomebio.core.aligner import get_query_prefix_aligner
 from pytomebio.core.attachment_site import AttachmentSite
 from pytomebio.core.attachment_site import AttachmentSiteMatch
-from pytomebio.core.aligner import get_query_prefix_aligner
 
 
 def get_best_alignment(alignments: List[Align.PairwiseAlignments]) -> Align.PairwiseAlignments:
@@ -36,7 +37,6 @@ def aligns_better_to_site(
     best_match: AttachmentSiteMatch,
     min_score: int,
 ) -> bool:
-    full_attachment_site_bases: str
     site: AttachmentSite = best_match.site
     site_bases = site.left + site.overhang + reverse_complement(site.right)
     if not best_match.is_left:

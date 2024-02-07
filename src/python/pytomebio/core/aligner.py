@@ -1,6 +1,5 @@
 from Bio import Align
 
-
 BWA_MEM_OPEN_GAP_SCORE: int = -7
 BWA_MEM_EXTEND_GAP_SCORE: int = -1
 

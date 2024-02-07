@@ -1,16 +1,19 @@
 import collections
-from attr import frozen
+import typing
 from pathlib import Path
-from pysam import AlignmentFile
-from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me
-from pytomebio.tools.cryptic_seq.trim_for_tn5me import Tn5ReadOneMatchingMetric
-from fgpyo.sam.builder import SamBuilder
-from fgpyo.sam import Template
-from samwell.dnautils import reverse_complement
-from typing import Optional
-from typing import Iterator
 from typing import Dict
+from typing import Iterator
 from typing import List
+from typing import Optional
+
+from attr import frozen
+from fgpyo import sequence
+from fgpyo.sam import Template
+from fgpyo.sam.builder import SamBuilder
+from pysam import AlignmentFile
+
+from pytomebio.tools.cryptic_seq.trim_for_tn5me import Tn5ReadOneMatchingMetric
+from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me
 
 
 @frozen
@@ -103,10 +106,11 @@ class TrimForTn5meTestCase:
             # read 1 is tagged and trimmed if it is accepted
             assert template.r1.has_tag("t5")
             assert template.r1.has_tag("tm")
-            assert len(template.r1.get_tag("t5")) == tn5_mosaic_end_len
+            t5_tag = typing.cast(str, template.r1.get_tag("t5"))
+            assert len(t5_tag) == tn5_mosaic_end_len
             return TrimForTn5meTestCase(
                 name=human_readable_name,
-                bases1=template.r1.get_tag("t5") + template.r1.query_sequence,
+                bases1=t5_tag + template.r1.query_sequence,
                 bases2=template.r2.query_sequence,
                 num_mismatches=int(template.r1.get_tag("tm")),
                 keep=True,
@@ -210,7 +214,7 @@ def test_trim_for_tn5me(
     tmp_path: Path,
     tn5_mosaic_end: str = "AGATGTGTATAAGAGACAG",
     max_mismatches: int = 1,
-):
+) -> None:
     test_builder = TrimForTn5meTestBuilder.from_test_cases(
         tn5_mosaic_end=tn5_mosaic_end,
         max_mismatches=max_mismatches,
@@ -282,7 +286,7 @@ def test_trim_for_tn5me(
             # reject reverse complement of mosaic end
             TrimForTn5meTestCase(
                 name="Reject:reverse complement of mosaic end",
-                bases1=reverse_complement(tn5_mosaic_end) + "AAAAAAAA",
+                bases1=sequence.reverse_complement(tn5_mosaic_end) + "AAAAAAAA",
                 num_mismatches=13,
                 keep=False,
             ),
@@ -299,7 +303,7 @@ def test_trim_for_tn5me(
             TrimForTn5meTestCase(
                 name="Reject:read2 starts with reverse-complement mosaic end",
                 bases1=tn5_mosaic_end[:-2] + "CC" + "AAAAAAAA",
-                bases2=reverse_complement(tn5_mosaic_end) + "AAAAAAAA",
+                bases2=sequence.reverse_complement(tn5_mosaic_end) + "AAAAAAAA",
                 num_mismatches=2,
                 keep=False,
             ),

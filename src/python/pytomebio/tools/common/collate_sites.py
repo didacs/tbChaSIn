@@ -1,7 +1,5 @@
 import statistics
-from attr import frozen
 from collections import Counter
-from fgpyo.util.metric import Metric
 from itertools import groupby
 from pathlib import Path
 from typing import ClassVar
@@ -9,6 +7,9 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+
+from attr import frozen
+from fgpyo.util.metric import Metric
 
 from pytomebio.pipeline.samples import Sample as ConfigSample
 from pytomebio.pipeline.samples import from_path

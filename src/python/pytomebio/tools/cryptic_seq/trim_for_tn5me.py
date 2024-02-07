@@ -1,13 +1,14 @@
-from attr import frozen
 import logging
 from collections import Counter
-from fgpyo.sam import Template
-from fgpyo.sam import TemplateIterator
-from fgpyo.util.metric import Metric
 from pathlib import Path
-from pysam import AlignmentFile
-from samwell import sam
 from typing import Dict
+from typing import Iterator
+
+from attr import frozen
+from fgpyo import sam
+from fgpyo.sam import Template
+from fgpyo.util.metric import Metric
+from pysam import AlignmentFile
 
 
 def _num_mismatches(s1: str, s2: str) -> int:
@@ -110,7 +111,7 @@ def trim_for_tn5me(
     ) as keep_writer, sam.writer(reject_bam, header=reader.header) as reject_writer:
         record_number: int = 1
 
-        template_iter: TemplateIterator = Template.iterator(reader)
+        template_iter: Iterator[Template] = Template.iterator(reader)
 
         for template in template_iter:
             assert template.r1 is not None, f"Missing r1 for {template.name}"

@@ -1,9 +1,10 @@
-import yaml
-from attrs import define
 from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
+
+import yaml
+from attrs import define
 
 
 @define

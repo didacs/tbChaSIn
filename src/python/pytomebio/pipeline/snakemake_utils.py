@@ -7,7 +7,6 @@ Currently this includes functions to parse key information out of the snakemake 
 file and summarize any failures.
 """
 
-import attr
 import enum
 import logging
 from itertools import dropwhile
@@ -17,6 +16,8 @@ from typing import ClassVar
 from typing import Dict
 from typing import List
 from typing import Optional
+
+import attr
 
 # The default number of lines to return from the log files for each failed job
 __LINES_PER_LOGFILE: int = 50
@@ -104,10 +105,14 @@ class RuleLog:
 
         logs: List[RuleLog] = []
         while lines:
-            lines = list(dropwhile(lambda l: not l.startswith(cls.RULE_ERROR_PREFIX), iter(lines)))
+            lines = list(
+                dropwhile(lambda line: not line.startswith(cls.RULE_ERROR_PREFIX), iter(lines))
+            )
             if lines:
                 rule_name: str = lines[0].rstrip()[len(cls.RULE_ERROR_PREFIX) : -1]
-                lines = list(dropwhile(lambda l: not l.startswith(cls.LOG_PREFIX), iter(lines)))
+                lines = list(
+                    dropwhile(lambda line: not line.startswith(cls.LOG_PREFIX), iter(lines))
+                )
                 dir: Path = Path(".").absolute()
                 log_path = dir / lines[0].rstrip()[len(cls.LOG_PREFIX) : -len(cls.LOG_SUFFIX)]
                 lines = lines[1:]

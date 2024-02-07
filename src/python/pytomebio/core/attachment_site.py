@@ -1,7 +1,8 @@
-from attr import frozen
-from samwell.dnautils import reverse_complement
 from typing import ClassVar
 from typing import Set
+
+from attr import frozen
+from fgpyo import sequence
 
 
 @frozen
@@ -53,7 +54,7 @@ class AttachmentSite:
             name=name,
             left=left,
             overhang=overhang,
-            right=reverse_complement(right),
+            right=sequence.reverse_complement(right),
         )
 
 

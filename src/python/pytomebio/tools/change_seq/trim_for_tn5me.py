@@ -1,14 +1,16 @@
-from attr import frozen
 import logging
-from Bio import Align
 from collections import Counter
 from pathlib import Path
+from typing import Dict
+
+from attr import frozen
+from Bio import Align
+from fgpyo import sam
+from fgpyo.sequence import reverse_complement
 from fgpyo.util.metric import Metric
 from pysam import AlignmentFile
-from samwell import sam
-from samwell.dnautils import reverse_complement
+
 from pytomebio.core.aligner import get_glocal_aligner
-from typing import Dict
 
 
 @frozen

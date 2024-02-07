@@ -1,23 +1,24 @@
-# tb-bfx
+# tbChaSIn
 
 Tools and pipelines for various off-target detection assays:
 
 - CHANGE-Seq
 - Cryptic-Seq
+- Integration site mapping assay from Durant et al. 2022 
 
 <!---toc start-->
-* [tb-bfx](#tb-bfx)
-   * [Local Setup](#local-setup)
-      * [Running Tests](#running-tests)
-   * [Run the Pipeline](#run-the-pipeline)
-      * [Reference Preparation](#reference-preparation)
-         * [CRISPR Reference Preparation](#crispr-reference-preparation)
-         * [Integrase Reference Preparation](#integrase-reference-preparation)
-      * [Execution](#execution)
-         * [Config](#config)
-            * [CHANGE-Seq](#change-seq)
-            * [Cryptic-seq](#cryptic-seq)
-            * [Durant et al](#durant-et-al)
+- [tbChaSIn](#tbchasin)
+  - [Local Setup](#local-setup)
+    - [Running Tests](#running-tests)
+  - [Run the Pipeline](#run-the-pipeline)
+    - [Reference Preparation](#reference-preparation)
+      - [CRISPR Reference Preparation](#crispr-reference-preparation)
+      - [Integrase Reference Preparation](#integrase-reference-preparation)
+    - [Execution](#execution)
+      - [Config](#config)
+        - [CHANGE-Seq](#change-seq)
+        - [Cryptic-seq](#cryptic-seq)
+        - [Durant et al.](#durant-et-al)
 
 <!---toc end-->
 
@@ -31,24 +32,24 @@ Tools and pipelines for various off-target detection assays:
 conda install -c conda-forge mamba
 ```
 
-- Get a local copy of the `tb-bfx` repo
+- Get a local copy of the `tbChaSIn` repo
 
 ```console
-git clone git@github.com:tomebio/tb-bfx.git
-cd tb-bfx
+git clone git@github.com:tomebio/tbChaSIn.git
+cd tbChaSIn
 ```
 
-- Create the `tb-bfx` conda environment
+- Create the `tbChaSIn` conda environment
 
 
 ```console
 mamba env create -f environment.yml
 ```
 
-- Activate the `tb-bfx` conda environment
+- Activate the `tbChaSIn` conda environment
 
 ```console
-mamba activate tb-bfx
+mamba activate tbChaSIn
 ```
 
 

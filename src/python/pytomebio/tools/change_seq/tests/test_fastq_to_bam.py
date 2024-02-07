@@ -1,23 +1,25 @@
+from pathlib import Path
+from typing import ClassVar
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Tuple
+
+import attr
 import numpy
 import pysam
 import pytest
-from pathlib import Path
-from pytomebio.tools.change_seq.fastq_to_bam import UngappedAligner
-from pytomebio.tools.change_seq.fastq_to_bam import MatchingMetric
-from pytomebio.tools.change_seq.fastq_to_bam import fastq_to_bam
+from attr import frozen
+from pysam import AlignedSegment
+from pysam import AlignmentFile
+from pysam import FastxRecord
+
 from pytomebio.core.attachment_site import AttachmentSite
 from pytomebio.core.attachment_site import AttachmentSiteMatch
-from pysam import FastxRecord
-from pysam import AlignmentFile
-from pysam import AlignedSegment
-from typing import Tuple
-from typing import List
-from typing import Dict
-from typing import Optional
-from typing import Iterator
-from typing import ClassVar
-import attr
-from attr import frozen
+from pytomebio.tools.change_seq.fastq_to_bam import MatchingMetric
+from pytomebio.tools.change_seq.fastq_to_bam import UngappedAligner
+from pytomebio.tools.change_seq.fastq_to_bam import fastq_to_bam
 
 
 def _align(ungapped_aligner: UngappedAligner, full_read: str) -> Optional[AttachmentSiteMatch]:

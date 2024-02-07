@@ -2,11 +2,9 @@
 Methods for setting up logging for tools.
 -----------------------------------------
 """
-
+import logging
 import socket
 from threading import RLock
-
-import logging
 
 # Global that is set to True once logging initialization is run to prevent running > once.
 __PYTOMEBIO_LOGGING_SETUP: bool = False

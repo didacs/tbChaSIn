@@ -5,16 +5,15 @@ from typing import List
 from typing import Optional
 from typing import Set
 
+from fgpyo import sam
 from fgpyo.sam import Cigar
 from fgpyo.sam import CigarOp
 from fgpyo.sam import Template
 from pysam import AlignedSegment
 from pysam import AlignmentFile
-from samwell import sam
 
 
 class Filterer:
-
     _MAPPED_CIGAR_OPS: Set = {CigarOp.M, CigarOp.EQ or CigarOp.X}
 
     def __init__(

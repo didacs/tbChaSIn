@@ -13,7 +13,7 @@ setup(
     maintainer='Fulcrum Genomics',
     maintainer_email='no-reply@fulcrumgenomics.com',
     description='Tools and APIs for off-target detection assays',
-    url='https://github.com/tomebio/tb-bfx',
+    url='https://github.com/tomebio/tbChaSIn',
     packages=['pytomebio'],
     package_dir={'': 'src/python'},
     entry_points={

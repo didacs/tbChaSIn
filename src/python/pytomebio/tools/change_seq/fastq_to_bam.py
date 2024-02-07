@@ -1,24 +1,25 @@
 import logging
+from pathlib import Path
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+
 import pysam
-from Bio import Align
 from attr import define
 from attr import frozen
+from Bio import Align
 from fgpyo.util.metric import Metric
-from pathlib import Path
 from pysam import AlignedSegment
 from pysam import AlignmentFile
 from pysam import AlignmentHeader
 from pysam import FastxFile
 from pysam import FastxRecord
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Iterator
 
+from pytomebio.core.aligner import get_query_prefix_aligner
 from pytomebio.core.attachment_site import AttachmentSite
 from pytomebio.core.attachment_site import AttachmentSiteMatch
-from pytomebio.core.aligner import get_query_prefix_aligner
 
 
 @frozen
@@ -182,7 +183,8 @@ def perform_gapped_rescue(
         min_score: the minimum alignment score for a returned alignment
     """
     match: Optional[AttachmentSiteMatch] = None
-    assert rescue_prefix_len > 0, "rescue_prefix_len must be greater than 0"
+    if rescue_prefix_len <= 0:
+        raise ValueError("rescue_prefix_len must be greater than 0")
     for site in sites:
         if full_read[:rescue_prefix_len] == site.left[:rescue_prefix_len]:
             match = gapped_alignment(

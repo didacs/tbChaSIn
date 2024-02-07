@@ -60,12 +60,12 @@ fi
 
 pushd "$root" > /dev/null
 banner "Executing in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
-run "Unit Tests"                "pytest -vv -r sx pytomebio"
-run "Style Checking"            "black --line-length 99 --check pytomebio"
-run "Linting"                   "flake8 --config=$parent/flake8.cfg pytomebio"
-run "Type Checking"             "mypy -p pytomebio --config $parent/mypy.ini"
-run "Shell Check (src/scripts)" "shellcheck ${repo_root}/src/scripts/*sh"
 run "Shell Check (precommit)"   "shellcheck ${repo_root}/ci/precommit.sh"
+run "Shell Check (src/scripts)" "shellcheck ${repo_root}/src/scripts/*sh"
+run "Style Checking"            "ruff format --config=$parent/ruff.toml --check pytomebio"
+run "Linting"                   "ruff check --config=$parent/ruff.toml pytomebio"
+run "Type Checking"             "mypy -p pytomebio --config $parent/mypy.ini"
+run "Unit Tests"                "pytest -vv -r sx pytomebio"
 popd > /dev/null
 
 if [ -z "$failures" ]; then

@@ -4,19 +4,18 @@ from typing import List
 from typing import Optional
 from typing import Set
 
+from fgpyo.sam import Cigar
 from fgpyo.sam import CigarOp
 from fgpyo.sam import Template
+from pysam import AlignedSegment
 
 from pytomebio.core.sites import FindSitesMetric
 from pytomebio.core.sites import Side
 from pytomebio.core.sites import SiteKey
 from pytomebio.core.sites import SitesGenerator
-from fgpyo.sam import Cigar
-from pysam import AlignedSegment
 
 
 class CrypticSeqSitesGenerator(SitesGenerator):
-
     _MAPPED_CIGAR_OPS: Set = {CigarOp.M, CigarOp.EQ or CigarOp.X}
 
     def __init__(
@@ -77,7 +76,7 @@ def find_sites(
     inter_site_slop: int = 5,
     min_mapq: int = 20,
     donor_name: str = "attD",
-    max_template_length: int = 1000
+    max_template_length: int = 1000,
 ) -> None:
     """Finds integration sites by examining read pair alignments.
 

@@ -6,7 +6,6 @@ of each pipeline, which should be done elsewhere.
 """
 
 
-import snakemake
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -14,6 +13,8 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+
+import snakemake
 
 
 class SnakemakeLogger(object):
@@ -31,7 +32,7 @@ class SnakemakeLogger(object):
             # NB: skip the first three and last two lines
             for counts_line in d["msg"].split("\n")[3:-2]:
                 counts_line = counts_line.strip()
-                job, count, _, _ = counts_line.split()
+                job, count = counts_line.split()
                 assert int(count) > 0, counts_line
 
                 self.rule_count[job] += int(count)

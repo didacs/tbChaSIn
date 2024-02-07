@@ -1,8 +1,11 @@
+from typing import Optional
+
 import pytest
 from attr import frozen
 from Bio import Align
-from pytomebio.core.aligner import get_query_prefix_aligner, get_glocal_aligner
-from typing import Optional
+
+from pytomebio.core.aligner import get_glocal_aligner
+from pytomebio.core.aligner import get_query_prefix_aligner
 
 
 @frozen

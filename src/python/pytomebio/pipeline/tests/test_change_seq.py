@@ -1,28 +1,28 @@
 """Tests for the change-seq pipeline"""
 
-import yaml
 from pathlib import Path
-from py._path.local import LocalPath as TmpDir
 from typing import Any
 from typing import Dict
+
+import yaml
 
 from pytomebio.pipeline.tests import touch_path
 from pytomebio.pipeline.tests.util import run_snakemake
 
 
-def test_change_seq(tmpdir: TmpDir) -> None:
+def test_change_seq(tmp_path: Path) -> None:
     """Basic unit test that runs the snakefile in dry-run mode to ensure it
     parses correctly.
     """
 
     # Set up reference data
-    ref_fasta: Path = touch_path(Path(tmpdir) / "ref" / "ref.fasta")
+    ref_fasta: Path = touch_path(tmp_path / "ref" / "ref.fasta")
     for ext in ["amb", "ann", "bwt", "pac", "sa"]:  # BWA files
         touch_path(Path(f"{ref_fasta}.{ext}"))
 
     # Set up FASTQs
     samples = ["foo", "bar", "two"]
-    fq_dir: Path = Path(tmpdir) / "fastqs"
+    fq_dir: Path = tmp_path / "fastqs"
     for sample in samples:
         touch_path(fq_dir / f"{sample}_R1_001.fastq.gz")
         touch_path(fq_dir / f"{sample}_R2_001.fastq.gz")
@@ -87,13 +87,13 @@ def test_change_seq(tmpdir: TmpDir) -> None:
         ],
     }
 
-    config_yml: Path = Path(tmpdir) / "config.yml"
+    config_yml: Path = tmp_path / "config.yml"
     with config_yml.open("w") as writer:
         yaml.dump(config, writer, default_flow_style=False)
 
     run_snakemake(
         pipeline="change-seq",
-        workdir=tmpdir,
+        workdir=tmp_path,
         rules=rules,
         config={"config_yml": config_yml},
     )

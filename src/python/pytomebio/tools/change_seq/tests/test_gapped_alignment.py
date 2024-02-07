@@ -1,15 +1,18 @@
-import pytest
+from typing import Generator
 from typing import List
+
+import pytest
 from Bio import Align
-from pytomebio.tools.change_seq.fastq_to_bam import gapped_alignment
-from pytomebio.tools.change_seq.fastq_to_bam import perform_gapped_rescue
+
+from pytomebio.core.aligner import get_query_prefix_aligner
 from pytomebio.core.attachment_site import AttachmentSite
 from pytomebio.core.attachment_site import AttachmentSiteMatch
-from pytomebio.core.aligner import get_query_prefix_aligner
+from pytomebio.tools.change_seq.fastq_to_bam import gapped_alignment
+from pytomebio.tools.change_seq.fastq_to_bam import perform_gapped_rescue
 
 
 @pytest.fixture(scope="session")
-def query_prefix_aligner() -> Align.PairwiseAligner:
+def query_prefix_aligner() -> Generator[Align.PairwiseAligner, None, None]:
     yield get_query_prefix_aligner()
 
 
@@ -372,7 +375,7 @@ def test_zero_rescue_prefix_len_raises_exception(
     query_prefix_aligner: Align.PairwiseAligner,
 ) -> None:
     """raises Exception (failed assert) because rescue_prefix_len == 0"""
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         perform_gapped_rescue(
             full_read="A",
             sites=[AttachmentSite(name="test_site", left="T", overhang="A", right="G")],

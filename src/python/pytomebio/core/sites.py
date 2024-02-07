@@ -12,9 +12,9 @@ from typing import Tuple
 
 from attr import define
 from attr import frozen
+from fgpyo import sam
 from fgpyo.sam import Template
 from fgpyo.util.metric import Metric
-from samwell import sam
 
 
 @define
@@ -98,8 +98,7 @@ def aggregate_sites(sites: List[FindSitesMetric], slop: int) -> List[FindSitesMe
     def sort_key(site: FindSitesMetric) -> Tuple[str, str, bool]:
         return site.reference_name, site.attachment_site, site.positive_strand
 
-    for key, group in itertools.groupby(sorted(sites, key=sort_key), key=sort_key):
-
+    for _, group in itertools.groupby(sorted(sites, key=sort_key), key=sort_key):
         cur_site: Optional[FindSitesMetric] = None
         for site in sorted(group, key=lambda s: s.position):
             if cur_site is None or site.position - cur_site.position > slop:  # new site
@@ -170,8 +169,8 @@ class SitesGenerator(ABC):
         """
         with sam.reader(in_bam, file_type=sam.SamFileType.BAM) as reader:
             assert (
-                reader.header["HD"].get("SO") == "queryname"
-                or reader.header["HD"].get("GO") == "query"
+                reader.header["HD"].get("SO") == "queryname"  # type: ignore
+                or reader.header["HD"].get("GO") == "query"  # type: ignore
             ), "Input BAM must be queryname sorted or query grouped"
 
             # First, we want to collate sites (and their counts) that have the following the same:
@@ -233,7 +232,8 @@ class SitesGenerator(ABC):
                 name: i for i, name in enumerate(reader.header.references)
             }
             all_sites = sorted(
-                all_sites, key=lambda m: (reference_name_to_int[m.reference_name], m.position)
+                all_sites,
+                key=lambda m: (reference_name_to_int[m.reference_name], m.position),
             )
 
             return all_sites
