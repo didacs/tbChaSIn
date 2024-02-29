@@ -69,7 +69,7 @@ rule fgbio_fastq_to_bam:
         fq1 = lambda wildcards: sample_dict[wildcards.sample].fq1,
         fq2 = lambda wildcards: sample_dict[wildcards.sample].fq2,
     params:
-        read_structure = "11M+T 11M+T"  # TODO: make user configurable
+        read_structure = "11M+T +T"  # TODO: make user configurable
     output:
         bam = "{group}/{sample}/{sample}.raw.bam"
     log: "logs/{group}/{sample}.fgbio_fastq_to_bam.log"
@@ -98,13 +98,14 @@ rule cryptic_seq_trim_for_tn5me:
     """
     input:
         bam="{group}/{sample}/{sample}.raw.bam",
+    log: "logs/{group}/{sample}.cryptic_seq.trim_for_tn5me.log"
+    resources:
+        mem_gb=2
     output:
         keep="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
         reject="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.reject.bam",
         metric_tsv="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.metrics.tsv"
-    log: "logs/{group}/{sample}.cryptic_seq.trim_for_tn5me.log"
-    resources:
-        mem_gb=2
+
     shell:
         """
         tomebio-tools cryptic-seq trim-for-tn5me \
@@ -121,10 +122,12 @@ rule trim_leading_attachment_site:
     Runs:
     - tomebio-tools cryptic-seq trim-leading-attachment-site
     """
+    params:
+        attachment_sites = lambda wildcards: sample_dict[wildcards.sample].attachment_sites,
+        trim_Tn5 = lambda wildcards: sample_dict[wildcards.sample].trim_Tn5
     input:
         bam="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
-    params:
-        attachment_sites = lambda wildcards: sample_dict[wildcards.sample].attachment_sites
+        bam_raw="{group}/{sample}/{sample}.raw.bam"
     output:
         keep="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
         reject="{group}/{sample}/{sample}.trim_leading_attachment_site.reject.bam",
@@ -132,7 +135,9 @@ rule trim_leading_attachment_site:
     log: "logs/{group}/{sample}.trim_leading_attachment_site.log"
     resources:
         mem_gb=2
-    shell:
+    run:
+        if params.trim_Tn5:
+            shell(
         """
         tomebio-tools cryptic-seq trim-leading-attachment-site \
             --in-bam {input.bam} \
@@ -140,8 +145,21 @@ rule trim_leading_attachment_site:
             --reject-bam {output.reject} \
             --out-metrics {output.metric_tsv} \
             --attachment-site {params.attachment_sites} \
+            --max-mismatches 4 \
         &> {log}
+        """)
+        else:
+            shell(
         """
+        tomebio-tools cryptic-seq trim-leading-attachment-site \
+            --in-bam {input.bam_raw} \
+            --keep-bam {output.keep} \
+            --reject-bam {output.reject} \
+            --out-metrics {output.metric_tsv} \
+            --attachment-site {params.attachment_sites} \
+            --max-mismatches 4 \
+        &> {log}
+        """)
 
 # TODO: min score is set low
 rule change_seq_trim_for_tn5me:
@@ -192,12 +210,12 @@ rule align:
         bam = "{group}/{sample}/{sample}.mapped.bam",
         csi = "{group}/{sample}/{sample}.mapped.bam.csi"
     log: "logs/{group}/{sample}.align.log"
-    threads: 18
+    threads: 4
     resources:
-        mem_gb = 32,  # 8 for bwa, 4 for fgbio, and 16 for samtools sort (8 threads times 2G per thread)
+        mem_gb = 8,  # 8 for bwa, 4 for fgbio, and 16 for samtools sort (8 threads times 2G per thread)
         fgbio_mem_gb = 4,
         sort_mem_gb = 2,
-        sort_threads = 8
+        sort_threads = 1
     shell:
         """
         (samtools fastq -N {input.bam} \

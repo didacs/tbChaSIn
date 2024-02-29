@@ -23,11 +23,12 @@ EOF
 dry_run=""
 tmp_dir=""
 
-while getopts "s:o:c:nt:" flag; do
+while getopts "s:o:c:g:nt:" flag; do
     case "${flag}" in
         s) snakefile=${OPTARG};;
         o) out_dir=${OPTARG};;
         c) config_file=${OPTARG};;
+        g) global_config_file=${OPTARG};;
         n) dry_run="-n";;
         t) tmp_dir=${OPTARG};;
         *) usage;;
@@ -42,10 +43,14 @@ fi
 if [ -z "${out_dir}" ]; then
     usage "Missing required parameter -o";
 fi
+if [ -n "${global_config_file}" ]; then
+    config_file=$(realpath -e "${global_config_file}")
+    extra_args="$extra_args --configfile $config_file";
+fi
 if [ -n "${config_file}" ]; then
     config_file=$(realpath -e "${config_file}")
     # shellcheck disable=SC2089
-    extra_args="--config config_yml=\"$config_file\"";
+    extra_args="$extra_args --config config_yml=\"$config_file\"";
 fi
 
 

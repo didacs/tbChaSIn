@@ -39,6 +39,7 @@ class Sample:
     def build(cls, config_sample: ConfigSample) -> "Sample":
         txt = Path(f"{config_sample.group}/{config_sample.name}/{config_sample.name}.sites.txt")
         metrics: List[FindSitesMetric] = list(FindSitesMetric.read(txt))
+
         return Sample(
             group=config_sample.group,
             name=config_sample.name,
@@ -204,7 +205,10 @@ def union_replicates(replicates: List[Sample]) -> Sample:
         )
         metrics.append(metric)
     sample: Sample = Sample(
-        group=replicates[0].group, name=replicates[0].name, replicate=None, metrics=metrics
+        group=replicates[0].group,
+        name=replicates[0].name,
+        replicate=None,
+        metrics=metrics,
     )
     return sample
 

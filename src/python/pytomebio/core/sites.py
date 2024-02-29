@@ -4,6 +4,8 @@ from abc import ABC
 from abc import abstractmethod
 from collections import Counter
 from pathlib import Path
+from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -14,6 +16,7 @@ from attr import define
 from attr import frozen
 from fgpyo import sam
 from fgpyo.sam import Template
+from fgpyo.util.inspect import dict_parser
 from fgpyo.util.metric import Metric
 
 
@@ -48,6 +51,11 @@ class FindSitesMetric(Metric["FindSitesMetric"]):
     right_to_count: Counter
     both_to_count: Counter
     count: int
+
+    @classmethod
+    def _parsers(cls) -> Dict[type, Callable[[str], Any]]:
+        parse_dict = dict_parser(cls, Dict[int, int], {})
+        return {Counter: lambda s: Counter(parse_dict(s))}
 
 
 @enum.unique
