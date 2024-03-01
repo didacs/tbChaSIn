@@ -20,8 +20,6 @@ class Sample:
         ref_fasta: The absolute path to the reference FASTA, with accompanying BWA index files and
                    FASTA index
         attachment_sites: The list of attachment sites ("<name>:<left-seq>:<overhang>:<right-seq>")
-        trim_Tn5: Whether Tn5 mosaic end needs to be trimmed from R1 (bool, default True)
-        extra: any additional sample metadata
     """
 
     name: str
@@ -31,7 +29,6 @@ class Sample:
     fq2: Path
     ref_fasta: Path
     attachment_sites: List[str]
-    trim_Tn5: bool
     extra: Dict[str, Any]
 
 
@@ -48,7 +45,6 @@ def from_path(yml: Path) -> Dict[str, Sample]:
             "replicate": the whole number (e.g. 1, 2, ...) specifying the replicate for this sample
             "fq1": The absolute path to the FASTQ for read 1 (R1)
             "fq2": The absolute path to the FASTQ for read 2 (R2)
-            "trim_Tn5": Whether Tn5 mosaic end needs to be trimmed from R1 (bool, default True)
 
     Args:
         yml: Path to yaml with snakemake config.
@@ -71,7 +67,6 @@ def _from_config(config: Dict[str, Any]) -> Dict[str, Sample]:
             "replicate": the whole number (e.g. 1, 2, ...) specifying the replicate for this sample
             "fq1": The absolute path to the FASTQ for read 1 (R1)
             "fq2": The absolute path to the FASTQ for read 2 (R2)
-            "trim_Tn5": Whether Tn5 mosaic end needs to be trimmed from R1 (bool, default True)
 
     Args:
         config: Dict object resulting from Path to yaml with snakemake config.
@@ -90,7 +85,6 @@ def _from_config(config: Dict[str, Any]) -> Dict[str, Sample]:
                 "fq1": Path(sample_args_dict["fq1"]),
                 "fq2": Path(sample_args_dict["fq2"]),
                 "replicate": int(sample_args_dict["replicate"]),
-                "trim_Tn5": group.get("trim_Tn5", True),
             }
             sample_args["extra"] = {
                 key: value for key, value in sample_args_dict.items() if key not in sample_args

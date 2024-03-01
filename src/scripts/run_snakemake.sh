@@ -44,8 +44,8 @@ if [ -z "${out_dir}" ]; then
     usage "Missing required parameter -o"
 fi
 if [ -n "${global_config_file}" ]; then
-    config_file=$(realpath -e "${global_config_file}")
-    extra_args="$extra_args --configfile $config_file"
+    global_config_file=$(realpath -e "${global_config_file}")
+    extra_args="$extra_args --configfile $global_config_file"
 fi
 if [ -n "${config_file}" ]; then
     config_file=$(realpath -e "${config_file}")

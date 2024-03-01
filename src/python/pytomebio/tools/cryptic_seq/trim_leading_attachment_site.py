@@ -88,7 +88,7 @@ def trim_leading_attachment_site(
 
     aligner = get_query_prefix_aligner()
 
-    counter = Counter({0: 0})
+    num_mismatches_counter = Counter({0: 0})
     with AlignmentFile(str(in_bam), check_sq=False) as reader, sam.writer(
         keep_bam, header=reader.header
     ) as keep_writer, sam.writer(reject_bam, header=reader.header) as reject_writer:
@@ -138,7 +138,7 @@ def trim_leading_attachment_site(
                     min_score=best_score,
                 )
 
-            counter[best_num_mismatches] += 1
+            num_mismatches_counter[best_num_mismatches] += 1
             if best_num_mismatches <= max_mismatches:
                 if not aligns_to_full_site:
                     template.r1.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, "None")
@@ -168,12 +168,9 @@ def trim_leading_attachment_site(
                 record_number += 1
         logger.info(f"Processed {record_number:,d} records")
 
-    for i in range(max(counter.elements()) + 1):
-        counter[i] += 0
-
     # write out the metrics
     with out_metrics.open("w") as writer:
-        total = sum(1 for _ in counter.elements())
+        total = sum(num_mismatches_counter.values())
         running_sum = 0
         writer.write(
             "\t".join(
@@ -188,7 +185,8 @@ def trim_leading_attachment_site(
             )
             + "\n"
         )
-        for num_mismatches, count in sorted(counter.items(), key=lambda tup: tup[0]):
+        for num_mismatches in range(max(num_mismatches_counter.keys())):
+            count = num_mismatches_counter.get(num_mismatches, 0)
             running_sum += count
             frac_at_num_mismatches = float(count) / total
             frac_ge_num_mismatches = float(total - running_sum) / total

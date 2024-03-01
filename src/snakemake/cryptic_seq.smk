@@ -102,14 +102,14 @@ rule cryptic_seq_trim_for_tn5me:
     """
     input:
         bam="{group}/{sample}/{sample}.raw.bam",
-    log:
-        "logs/{group}/{sample}.cryptic_seq.trim_for_tn5me.log",
-    resources:
-        mem_gb=2,
     output:
         keep="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
         reject="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.reject.bam",
         metric_tsv="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.metrics.tsv",
+    log:
+        "logs/{group}/{sample}.cryptic_seq.trim_for_tn5me.log",
+    resources:
+        mem_gb=2,
     shell:
         """
         tomebio-tools cryptic-seq trim-for-tn5me \
@@ -127,12 +127,14 @@ rule trim_leading_attachment_site:
     Runs:
     - tomebio-tools cryptic-seq trim-leading-attachment-site
     """
+    input:
+        bam=(
+            "{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam"
+            if config.get("trim_Tn5", True)
+            else "{group}/{sample}/{sample}.raw.bam"
+        ),
     params:
         attachment_sites=lambda wildcards: sample_dict[wildcards.sample].attachment_sites,
-        trim_Tn5=lambda wildcards: sample_dict[wildcards.sample].trim_Tn5,
-    input:
-        bam="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
-        bam_raw="{group}/{sample}/{sample}.raw.bam",
     output:
         keep="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
         reject="{group}/{sample}/{sample}.trim_leading_attachment_site.reject.bam",
@@ -141,10 +143,8 @@ rule trim_leading_attachment_site:
         "logs/{group}/{sample}.trim_leading_attachment_site.log",
     resources:
         mem_gb=2,
-    run:
-        if params.trim_Tn5:
-            shell(
-                """
+    shell:
+        """
         tomebio-tools cryptic-seq trim-leading-attachment-site \
             --in-bam {input.bam} \
             --keep-bam {output.keep} \
@@ -154,20 +154,6 @@ rule trim_leading_attachment_site:
             --max-mismatches 4 \
         &> {log}
         """
-            )
-        else:
-            shell(
-                """
-        tomebio-tools cryptic-seq trim-leading-attachment-site \
-            --in-bam {input.bam_raw} \
-            --keep-bam {output.keep} \
-            --reject-bam {output.reject} \
-            --out-metrics {output.metric_tsv} \
-            --attachment-site {params.attachment_sites} \
-            --max-mismatches 4 \
-        &> {log}
-        """
-            )
 
 
 # TODO: min score is set low
@@ -352,10 +338,10 @@ rule picard_collect_multiple_metrics:
     input:
         bam="{group}/{sample}/{sample}.deduped.bam",
         ref_fasta=lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
-    output:
-        "{group}/{sample}/{sample}.quality_yield_metrics.txt",
     params:
         prefix="{group}/{sample}/{sample}",
+    output:
+        "{group}/{sample}/{sample}.quality_yield_metrics.txt",
     log:
         "logs/{group}/{sample}.picard_collect_multiple_metrics.log",
     resources:
@@ -398,11 +384,11 @@ rule fastqc:
             if wildcards.read_num == "1"
             else sample_dict[wildcards.sample].fq2
         ),
+    params:
+        outdir="{group}/{sample}",
     output:
         html="{group}/{sample}/{sample}.R{read_num}_fastqc.html",
         zip="{group}/{sample}/{sample}.R{read_num}_fastqc.zip",
-    params:
-        outdir="{group}/{sample}",
     log:
         "logs/{group}/{sample}.fastqc.R{read_num}.log",
     shell:
@@ -448,10 +434,10 @@ rule multiqc:
             f"{sample.group}/{sample.name}/{sample.name}.quality_yield_metrics.txt"
             for sample in samples
         ],
-    output:
-        multiqc_report="sequencing_quality_report.html",
     params:
         directory=f"{os.getcwd()}",
+    output:
+        multiqc_report="sequencing_quality_report.html",
     log:
         f"logs/multiqc.log",
     shell:
@@ -493,10 +479,10 @@ rule collate_sites:
     input:
         yml=yml,
         txt=[f"{sample.group}/{sample.name}/{sample.name}.sites.txt" for sample in samples],
-    output:
-        tsv="sites.per_sample.txt",
     params:
         out_pre="sites",
+    output:
+        tsv="sites.per_sample.txt",
     log:
         "logs/collate_sites.log",
     resources:

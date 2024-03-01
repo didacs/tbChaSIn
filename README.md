@@ -151,6 +151,7 @@ bash src/scripts/run_snakemake.sh \
     -t /path/to/large/temp/directory \
     -s src/snakemake/<pipeline>smk \
     -c /path/to/config.yml \
+    [-g /path/to/global_config.yml] \
     -o /path/to/output
 ```
 
@@ -158,8 +159,11 @@ See [Reference Preparation](#reference-preparation) for how to prepare the refer
 
 #### Config
 
-The config is organized at three levels: run, group, and sample level.
-The run level contains configuration that applies to all groups and samples, for example tool-level parameters
+There are two configuration files: run and global.
+
+The run config is required and provides metadata for the samples to be processed.
+The run config is organized at three levels: run, group, and sample level.
+The run level contains configuration that applies to all groups and samples, for example tool-level parameters.
 The group level contains configuration that applies to related samples, for example the guide for specific CRISPR samples, or tool-specific parameters recommended for integrase samples.
 The sample level contains configuration that applies to each sample, for example the name, replicate number, and paths to the input FASTQs.
 
@@ -172,6 +176,9 @@ The sample level contains configuration that applies to each sample, for example
  | `replicate`        | The replicate number (e.g. 1, 2, 3)                                                         | Sample | Yes      | NA      |
  | `fq1`              | The absolute path to the FASTQ for read 1 (R1)                                              | Sample | Yes      | NA      |
  | `fq2`              | The absolute path to the FASTQ for read 2 (R2)                                              | Sample | Yes      | NA      |
+
+The global config is optional and overrides default values for parameters that apply to all samples.
+The global parameters are specific to each workflow.
 
 ##### CHANGE-Seq
 
@@ -318,6 +325,12 @@ settings:
         fq1: /path/to/cryptic-seq/fastqs/JM-CS004a-N7-attPalone-rep2-Sid6_S6_L001_R1_001.fastq.gz
         fq2: /path/to/cryptic-seq/fastqs/JM-CS004a-N7-attPalone-rep2-Sid6_S6_L001_R2_001.fastq.gz
 ```
+
+The global parameters supported for Cryptic-seq are listed in the following table. A configuration file with the default values is [provided](src/snakemake/cryptic_seq.config.yaml).
+
+| Config Key | Description | Default |
+| ---------------- | ---------------- | ---------------- |
+| trim_Tn5 | Whether to trim the Tn5 mosiac end sequence from the start of R1. | `True`|
 
 ##### Durant et al.
 
