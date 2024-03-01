@@ -27,3 +27,4 @@ dependencies:
   - pip=24.0
   - fgpyo=0.2.0
   - fastp=0.23.4
+  - snakefmt=0.10.0

@@ -33,7 +33,7 @@ extensions = [
     "mark_duplicates.txt",
     "quality_yield_metrics.txt",  # for picard CollectMultipleMetrics
     "svpileup.aggregated.txt",
-    "sites.txt"
+    "sites.txt",
 ]
 
 
@@ -50,8 +50,9 @@ all_terminal_files.append(Path("sites.per_sample.txt"))
 # Snakemake rules
 ################################################################################
 
+
+# Block of code that gets called if the snakemake pipeline exits with an error.
 onerror:
-    """Block of code that gets called if the snakemake pipeline exits with an error."""
     snakemake_utils.on_error(snakefile=Path(__file__), config=config, log=Path(log))
 
 
@@ -67,17 +68,18 @@ rule fastq_to_bam:
     - tomebio-tools change-seq fastq-to-bam
     """
     input:
-        fq1 = lambda wildcards: sample_dict[wildcards.sample].fq1,
-        fq2 = lambda wildcards: sample_dict[wildcards.sample].fq2,
+        fq1=lambda wildcards: sample_dict[wildcards.sample].fq1,
+        fq2=lambda wildcards: sample_dict[wildcards.sample].fq2,
     output:
-        keep_bam   = "{group}/{sample}/{sample}.fastq_to_bam.keep.bam",
-        reject_bam = "{group}/{sample}/{sample}.fastq_to_bam.reject.bam",
-        metric_tsv = "{group}/{sample}/{sample}.fastq_to_bam.metrics.tsv"
+        keep_bam="{group}/{sample}/{sample}.fastq_to_bam.keep.bam",
+        reject_bam="{group}/{sample}/{sample}.fastq_to_bam.reject.bam",
+        metric_tsv="{group}/{sample}/{sample}.fastq_to_bam.metrics.tsv",
     params:
-        attachment_sites = lambda wildcards: sample_dict[wildcards.sample].attachment_sites
-    log: "logs/{group}/{sample}.fastq_to_bam.log"
+        attachment_sites=lambda wildcards: sample_dict[wildcards.sample].attachment_sites,
+    log:
+        "logs/{group}/{sample}.fastq_to_bam.log",
     resources:
-        mem_gb = 2
+        mem_gb=2,
     shell:
         """
         tomebio-tools change-seq fastq-to-bam \
@@ -103,10 +105,11 @@ rule trim_for_tn5me:
         bam="{group}/{sample}/{sample}.fastq_to_bam.keep.bam",
     output:
         bam="{group}/{sample}/{sample}.trim_for_tn5me.bam",
-        metric_tsv="{group}/{sample}/{sample}.trim_for_tn5me.metrics.tsv"
-    log: "logs/{group}/{sample}.trim_for_tn5me.log"
+        metric_tsv="{group}/{sample}/{sample}.trim_for_tn5me.metrics.tsv",
+    log:
+        "logs/{group}/{sample}.trim_for_tn5me.log",
     resources:
-        mem_gb=2
+        mem_gb=2,
     shell:
         """
         tomebio-tools change-seq trim-for-tn5me \
@@ -115,6 +118,7 @@ rule trim_for_tn5me:
             --out-metrics {output.metric_tsv} \
         &> {log}
         """
+
 
 rule align:
     """Aligns the reads in the unmapped BAM to the reference genome and coordinate sorts
@@ -129,19 +133,23 @@ rule align:
     - samtools sort
     """
     input:
-        bam = "{group}/{sample}/{sample}.trim_for_tn5me.bam",
-        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
-        bwa_files = lambda wildcards: [Path(f"{sample_dict[wildcards.sample].ref_fasta}.{ext}") for ext in ["amb", "ann", "bwt", "pac", "sa"]]
+        bam="{group}/{sample}/{sample}.trim_for_tn5me.bam",
+        ref_fasta=lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
+        bwa_files=lambda wildcards: [
+            Path(f"{sample_dict[wildcards.sample].ref_fasta}.{ext}")
+            for ext in ["amb", "ann", "bwt", "pac", "sa"]
+        ],
     output:
-        bam = "{group}/{sample}/{sample}.mapped.bam",
-        csi = "{group}/{sample}/{sample}.mapped.bam.csi"
-    log: "logs/{group}/{sample}.align.log"
+        bam="{group}/{sample}/{sample}.mapped.bam",
+        csi="{group}/{sample}/{sample}.mapped.bam.csi",
+    log:
+        "logs/{group}/{sample}.align.log",
     threads: 18
     resources:
-        mem_gb = 32,  # 8 for bwa, 4 for fgbio, and 16 for samtools sort (8 threads times 2G per thread)
-        fgbio_mem_gb = 4,
-        sort_mem_gb = 2,
-        sort_threads = 8
+        mem_gb=32,  # 8 for bwa, 4 for fgbio, and 16 for samtools sort (8 threads times 2G per thread)
+        fgbio_mem_gb=4,
+        sort_mem_gb=2,
+        sort_threads=8,
     shell:
         """
         (samtools fastq -N {input.bam} \
@@ -160,15 +168,16 @@ rule mark_duplicates:
     - picard MarkDuplicates
     """
     input:
-        bam = "{group}/{sample}/{sample}.mapped.bam"
+        bam="{group}/{sample}/{sample}.mapped.bam",
     output:
-        bam = "{group}/{sample}/{sample}.deduped.bam",
-        txt = "{group}/{sample}/{sample}.mark_duplicates.txt",
-        tmp_dir = temp(directory("{group}/{sample}/tmp_mark_duplicates_dir"))
-    log: "logs/{group}/{sample}.mark_duplicates.log"
+        bam="{group}/{sample}/{sample}.deduped.bam",
+        txt="{group}/{sample}/{sample}.mark_duplicates.txt",
+        tmp_dir=temp(directory("{group}/{sample}/tmp_mark_duplicates_dir")),
+    log:
+        "logs/{group}/{sample}.mark_duplicates.log",
     resources:
         mem_gb=12,
-        jvm_gb=8
+        jvm_gb=8,
     shell:
         """
         picard \
@@ -199,12 +208,12 @@ rule picard_collect_alignment_summary_metrics:
         bam="{group}/{sample}/{sample}.deduped.bam",
         ref_fasta=lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
     output:
-        txt = "{group}/{sample}/{sample}.alignment_summary_metrics.txt"
+        txt="{group}/{sample}/{sample}.alignment_summary_metrics.txt",
     log:
-        "logs/{group}/{sample}.picard_collect_alignment_summary_metrics.log"
+        "logs/{group}/{sample}.picard_collect_alignment_summary_metrics.log",
     resources:
         mem_gb=12,
-        jvm_gb=8
+        jvm_gb=8,
     shell:
         """
         picard \
@@ -226,16 +235,16 @@ rule picard_collect_multiple_metrics:
     """
     input:
         bam="{group}/{sample}/{sample}.deduped.bam",
-        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
+        ref_fasta=lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
     output:
-        "{group}/{sample}/{sample}.quality_yield_metrics.txt"
+        "{group}/{sample}/{sample}.quality_yield_metrics.txt",
     params:
-        prefix="{group}/{sample}/{sample}"
+        prefix="{group}/{sample}/{sample}",
     log:
-        "logs/{group}/{sample}.picard_collect_multiple_metrics.log"
+        "logs/{group}/{sample}.picard_collect_multiple_metrics.log",
     resources:
         mem_gb=12,
-        jvm_gb=8
+        jvm_gb=8,
     shell:
         """
         picard \
@@ -268,16 +277,18 @@ rule fastqc:
     - fastqc
     """
     input:
-        fq = lambda wildcards: (
-            sample_dict[wildcards.sample].fq1 if wildcards.read_num == "1" else sample_dict[wildcards.sample].fq2
-        )
+        fq=lambda wildcards: (
+            sample_dict[wildcards.sample].fq1
+            if wildcards.read_num == "1"
+            else sample_dict[wildcards.sample].fq2
+        ),
     output:
-        html = "{group}/{sample}/{sample}.R{read_num}_fastqc.html",
-        zip = "{group}/{sample}/{sample}.R{read_num}_fastqc.zip"
+        html="{group}/{sample}/{sample}.R{read_num}_fastqc.html",
+        zip="{group}/{sample}/{sample}.R{read_num}_fastqc.zip",
     params:
-        outdir = "{group}/{sample}"
+        outdir="{group}/{sample}",
     log:
-        "logs/{group}/{sample}.fastqc.R{read_num}.log"
+        "logs/{group}/{sample}.fastqc.R{read_num}.log",
     shell:
         """
         (mkdir -p {params.outdir} &&
@@ -299,17 +310,34 @@ rule multiqc:
     - MultiQC
     """
     input:
-        fastqc_html = [f"{sample.group}/{sample.name}/{sample.name}.R{r}_fastqc.html" for sample in samples for r in [1, 2]],
-        fastqc_zip = [f"{sample.group}/{sample.name}/{sample.name}.R{r}_fastqc.zip" for sample in samples for r in [1, 2]],
-        dupe = [f"{sample.group}/{sample.name}/{sample.name}.mark_duplicates.txt" for sample in samples],
-        asm = [f"{sample.group}/{sample.name}/{sample.name}.alignment_summary_metrics.txt" for sample in samples],
-        qym = [f"{sample.group}/{sample.name}/{sample.name}.quality_yield_metrics.txt" for sample in samples],
+        fastqc_html=[
+            f"{sample.group}/{sample.name}/{sample.name}.R{r}_fastqc.html"
+            for sample in samples
+            for r in [1, 2]
+        ],
+        fastqc_zip=[
+            f"{sample.group}/{sample.name}/{sample.name}.R{r}_fastqc.zip"
+            for sample in samples
+            for r in [1, 2]
+        ],
+        dupe=[
+            f"{sample.group}/{sample.name}/{sample.name}.mark_duplicates.txt"
+            for sample in samples
+        ],
+        asm=[
+            f"{sample.group}/{sample.name}/{sample.name}.alignment_summary_metrics.txt"
+            for sample in samples
+        ],
+        qym=[
+            f"{sample.group}/{sample.name}/{sample.name}.quality_yield_metrics.txt"
+            for sample in samples
+        ],
     output:
-        multiqc_report = "sequencing_quality_report.html",
+        multiqc_report="sequencing_quality_report.html",
     params:
-        directory=f"{os.getcwd()}"
+        directory=f"{os.getcwd()}",
     log:
-        f"logs/multiqc.log"
+        f"logs/multiqc.log",
     shell:
         "multiqc {params.directory} --force --no-ansi --filename {output.multiqc_report} &> {log}"
 
@@ -321,16 +349,17 @@ rule fgsv_svpileup:
     - fgsv SvPileup
     """
     input:
-        bam = "{group}/{sample}/{sample}.deduped.bam"
+        bam="{group}/{sample}/{sample}.deduped.bam",
     output:
-        txt = "{group}/{sample}/{sample}.svpileup.txt",
-        bam = "{group}/{sample}/{sample}.svpileup.bam"
+        txt="{group}/{sample}/{sample}.svpileup.txt",
+        bam="{group}/{sample}/{sample}.svpileup.bam",
     params:
-        prefix = "{group}/{sample}/{sample}.svpileup",
-    log: "logs/{group}/{sample}.fgsv_svpileup.log"
+        prefix="{group}/{sample}/{sample}.svpileup",
+    log:
+        "logs/{group}/{sample}.fgsv_svpileup.log",
     resources:
         mem_gb=5,
-        jvm_gb=4
+        jvm_gb=4,
     shell:
         """
         fgsv \
@@ -350,13 +379,14 @@ rule fgsv_aggregatesvpileup:
     - fgsv AggregateSvPileup
     """
     input:
-        txt = "{group}/{sample}/{sample}.svpileup.txt"
+        txt="{group}/{sample}/{sample}.svpileup.txt",
     output:
-        txt = "{group}/{sample}/{sample}.svpileup.aggregated.txt",
-    log: "logs/{group}/{sample}.fgsv_aggregatesvpileup.log"
+        txt="{group}/{sample}/{sample}.svpileup.aggregated.txt",
+    log:
+        "logs/{group}/{sample}.fgsv_aggregatesvpileup.log",
     resources:
         mem_gb=5,
-        jvm_gb=4
+        jvm_gb=4,
     shell:
         """
         fgsv \
@@ -378,10 +408,11 @@ rule find_sites:
     input:
         bam="{group}/{sample}/{sample}.deduped.bam",
     output:
-        tsv="{group}/{sample}/{sample}.sites.txt"
-    log: "logs/{group}/{sample}.find_sites.log"
+        tsv="{group}/{sample}/{sample}.sites.txt",
+    log:
+        "logs/{group}/{sample}.find_sites.log",
     resources:
-        mem_gb=2
+        mem_gb=2,
     shell:
         """
         samtools sort \
@@ -402,14 +433,15 @@ rule collate_sites:
     """
     input:
         yml=yml,
-        txt=[f"{sample.group}/{sample.name}/{sample.name}.sites.txt" for sample in samples]
+        txt=[f"{sample.group}/{sample.name}/{sample.name}.sites.txt" for sample in samples],
     output:
-        tsv="sites.per_sample.txt"
+        tsv="sites.per_sample.txt",
     params:
-        out_pre="sites"
-    log: "logs/collate_sites.log"
+        out_pre="sites",
+    log:
+        "logs/collate_sites.log",
     resources:
-        mem_gb=2
+        mem_gb=2,
     shell:
         """
         tomebio-tools common collate-sites \

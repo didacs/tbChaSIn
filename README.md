@@ -79,16 +79,19 @@ sudo apt-get install coreutils
 To run tests, execute:
 
 ```console
-bash ci/precommit.sh
+bash ci/precommit.sh [-f]
 ```
 
 This will run:
 
 1. Unit test for Python code and Snakemake plumbing (with `pytest`)
-2. Linting of Python code (with `flake8`)
-3. Code style checking of Python code (with `black`)
+2. Linting of Python code (with `ruff`)
+3. Code style checking of Python code (with `ruff`)
 4. Type checking of Python code (with `mypy`)
 5. Code style checking of Shell code (with `shellcheck`)
+6. Code style checking of Snakemake code (with `snakefmt`)
+
+If the optional `-f` flag is specified, then the Python and Snakemake files will be automatically formatted prior to applying the checks.
 
 ## Run the Pipeline
 

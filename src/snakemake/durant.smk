@@ -24,11 +24,7 @@ samples: List[Sample] = list(sample_dict.values())
 
 
 # File extensions to generate
-extensions = [
-    "with_donor.mapped.flagstat.txt",
-    "genome.mapped.flagstat.txt",
-    "sites.txt"
-]
+extensions = ["with_donor.mapped.flagstat.txt", "genome.mapped.flagstat.txt", "sites.txt"]
 
 all_terminal_files: List[Path] = [
     Path(f"{sample.group}/{sample.name}/{sample.name}.{ext}")
@@ -40,31 +36,35 @@ all_terminal_files: List[Path] = [
 # Snakemake rules
 ################################################################################
 
+
+# Block of code that gets called if the snakemake pipeline exits with an error.
 onerror:
-    """Block of code that gets called if the snakemake pipeline exits with an error."""
     snakemake_utils.on_error(snakefile=Path(__file__), config=config, log=Path(log))
 
 
 rule all:
     input:
-        all_terminal_files
+        all_terminal_files,
 
 
 rule trim_leading_r2:
     input:
-        r1 = lambda wildcards: sample_dict[wildcards.sample].fq1,
-        r2 = lambda wildcards: sample_dict[wildcards.sample].fq2
+        r1=lambda wildcards: sample_dict[wildcards.sample].fq1,
+        r2=lambda wildcards: sample_dict[wildcards.sample].fq2,
     output:
-        r1_keep = "{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
-        r2_keep = "{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
-        r1_reject = "{group}/{sample}/{sample}.trim_leading_r2.reject.R1.fq.gz",
-        r2_reject = "{group}/{sample}/{sample}.trim_leading_r2.reject.R2.fq.gz",
-        txt = "{group}/{sample}/{sample}.trim_leading_r2.metrics.txt"
+        r1_keep="{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
+        r2_keep="{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
+        r1_reject="{group}/{sample}/{sample}.trim_leading_r2.reject.R1.fq.gz",
+        r2_reject="{group}/{sample}/{sample}.trim_leading_r2.reject.R2.fq.gz",
+        txt="{group}/{sample}/{sample}.trim_leading_r2.metrics.txt",
     params:
-        out_prefix = "{group}/{sample}/{sample}.trim_leading_r2",
-        stagger = lambda wildcards: sample_dict[wildcards.sample].extra["stagger"],
-        donor_inner_primer = lambda wildcards: sample_dict[wildcards.sample].extra["donor_inner_primer"]
-    log: "logs/{group}/{sample}.trim_leading_r2.log"
+        out_prefix="{group}/{sample}/{sample}.trim_leading_r2",
+        stagger=lambda wildcards: sample_dict[wildcards.sample].extra["stagger"],
+        donor_inner_primer=lambda wildcards: sample_dict[wildcards.sample].extra[
+            "donor_inner_primer"
+        ],
+    log:
+        "logs/{group}/{sample}.trim_leading_r2.log",
     shell:
         """
         (
@@ -79,17 +79,18 @@ rule trim_leading_r2:
 
 rule fastp:
     input:
-        r1 = "{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
-        r2 = "{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
+        r1="{group}/{sample}/{sample}.trim_leading_r2.keep.R1.fq.gz",
+        r2="{group}/{sample}/{sample}.trim_leading_r2.keep.R2.fq.gz",
     output:
-        r1 = "{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
-        r2 = "{group}/{sample}/{sample}.R2.no_adapters.fastq.gz",
-        html = "{group}/{sample}/{sample}.fastp.html",
-        json = "{group}/{sample}/{sample}.fastp.json"
+        r1="{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
+        r2="{group}/{sample}/{sample}.R2.no_adapters.fastq.gz",
+        html="{group}/{sample}/{sample}.fastp.html",
+        json="{group}/{sample}/{sample}.fastp.json",
     params:
-        r1_adapter = lambda wildcards: sample_dict[wildcards.sample].extra["r1_adapter"],
-        r2_adapter = lambda wildcards: sample_dict[wildcards.sample].extra["r2_adapter"]
-    log: "logs/{group}/{sample}.fastp.log"
+        r1_adapter=lambda wildcards: sample_dict[wildcards.sample].extra["r1_adapter"],
+        r2_adapter=lambda wildcards: sample_dict[wildcards.sample].extra["r2_adapter"],
+    log:
+        "logs/{group}/{sample}.fastp.log",
     threads: 5 if len(sample_dict) > 1 else 10
     shell:
         """
@@ -102,19 +103,22 @@ rule fastp:
         ) &> {log}
         """
 
+
 rule samtools_import:
     input:
-        r1 = "{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
-        r2 = "{group}/{sample}/{sample}.R2.no_adapters.fastq.gz"
+        r1="{group}/{sample}/{sample}.R1.no_adapters.fastq.gz",
+        r2="{group}/{sample}/{sample}.R2.no_adapters.fastq.gz",
     output:
-        bam = "{group}/{sample}/{sample}.unmapped.bam"
-    log: "logs/{group}/{sample}.samtools_import.log"
+        bam="{group}/{sample}/{sample}.unmapped.bam",
+    log:
+        "logs/{group}/{sample}.samtools_import.log",
     shell:
         """
         (
         samtools import --output-fmt BAM -1 {input.r1} -2 {input.r2} > {output.bam}
         ) &> {log}
         """
+
 
 rule align_full:
     """Aligns the reads to the genome with the donor contig appended
@@ -129,13 +133,14 @@ rule align_full:
     - samtools sort
     """
     input:
-        bam = "{group}/{sample}/{sample}.unmapped.bam",
-        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].ref_fasta
+        bam="{group}/{sample}/{sample}.unmapped.bam",
+        ref_fasta=lambda wildcards: sample_dict[wildcards.sample].ref_fasta,
     output:
-        bam = "{group}/{sample}/{sample}.with_donor.mapped.bam"
+        bam="{group}/{sample}/{sample}.with_donor.mapped.bam",
     params:
-        min_aln_score = lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"]
-    log: "logs/{group}/{sample}.align.log"
+        min_aln_score=lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"],
+    log:
+        "logs/{group}/{sample}.align.log",
     threads: 16
     shell:
         """
@@ -146,6 +151,7 @@ rule align_full:
         ) &> {log}
         """
 
+
 rule filter_reads:
     """Filters for reads with integration site evidence.
 
@@ -153,11 +159,12 @@ rule filter_reads:
     - tomebio-tools durant filter-reads
     """
     input:
-        bam="{group}/{sample}/{sample}.with_donor.mapped.bam"
+        bam="{group}/{sample}/{sample}.with_donor.mapped.bam",
     output:
-        keep_bam = "{group}/{sample}/{sample}.filter_reads.keep.bam",
-        reject_bam = "{group}/{sample}/{sample}.filter_reads.reject.bam",
-    log: "logs/{group}/{sample}.find_sites.log"
+        keep_bam="{group}/{sample}/{sample}.filter_reads.keep.bam",
+        reject_bam="{group}/{sample}/{sample}.filter_reads.reject.bam",
+    log:
+        "logs/{group}/{sample}.find_sites.log",
     shell:
         """
         tomebio-tools durant filter-reads \
@@ -166,6 +173,7 @@ rule filter_reads:
          --reject-bam {output.reject_bam} \
         &> {log}
         """
+
 
 rule align_genome:
     """Aligns the reads to the genome only
@@ -179,13 +187,14 @@ rule align_genome:
     - samtools sort
     """
     input:
-        bam = "{group}/{sample}/{sample}.filter_reads.keep.bam",
-        ref_fasta = lambda wildcards: sample_dict[wildcards.sample].extra["genome_fasta"]
+        bam="{group}/{sample}/{sample}.filter_reads.keep.bam",
+        ref_fasta=lambda wildcards: sample_dict[wildcards.sample].extra["genome_fasta"],
     output:
-        bam = "{group}/{sample}/{sample}.genome.mapped.bam"
+        bam="{group}/{sample}/{sample}.genome.mapped.bam",
     params:
-        min_aln_score = lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"]
-    log: "logs/{group}/{sample}.align.log"
+        min_aln_score=lambda wildcards: sample_dict[wildcards.sample].extra["min_aln_score"],
+    log:
+        "logs/{group}/{sample}.align.log",
     threads: 16
     shell:
         """
@@ -195,18 +204,21 @@ rule align_genome:
         ) &> {log}
         """
 
+
 rule flagstat:
     input:
-        bam = "{group}/{sample}/{sample}.{foo}.mapped.bam"
+        bam="{group}/{sample}/{sample}.{foo}.mapped.bam",
     output:
-        txt = "{group}/{sample}/{sample}.{foo}.mapped.flagstat.txt"
-    log: "logs/{group}/{sample}.{foo}.flagstat.log"
+        txt="{group}/{sample}/{sample}.{foo}.mapped.flagstat.txt",
+    log:
+        "logs/{group}/{sample}.{foo}.flagstat.log",
     shell:
         """
         (
         samtools flagstat {input.bam} > {output.txt}
         ) &> {log}
         """
+
 
 rule find_sites:
     """Finds putative integration sties.
@@ -215,12 +227,13 @@ rule find_sites:
     - tomebio-tools durant find-sites
     """
     input:
-        bam = "{group}/{sample}/{sample}.genome.mapped.bam"
+        bam="{group}/{sample}/{sample}.genome.mapped.bam",
     output:
-        tsv = "{group}/{sample}/{sample}.sites.txt"
+        tsv="{group}/{sample}/{sample}.sites.txt",
     params:
-        inter_site_slop = lambda wildcards: sample_dict[wildcards.sample].extra["inter_site_slop"]
-    log: "logs/{group}/{sample}.find_sites.log"
+        inter_site_slop=lambda wildcards: sample_dict[wildcards.sample].extra["inter_site_slop"],
+    log:
+        "logs/{group}/{sample}.find_sites.log",
     shell:
         """
         tomebio-tools durant find-sites \
@@ -230,8 +243,9 @@ rule find_sites:
         &> {log}
         """
 
+
 # FIXME: need config to enable this rule
-#rule collate_sites:
+# rule collate_sites:
 #    """Collates tables for identified integration sites across samples and replicates.
 #
 #    Runs:
