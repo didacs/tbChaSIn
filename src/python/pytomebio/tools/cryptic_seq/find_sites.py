@@ -36,7 +36,8 @@ class CrypticSeqSitesGenerator(SitesGenerator):
         tag_value: str = str(read2.get_tag(AttachmentSiteMatch.READ_MATCH_TAG))
         site_match = AttachmentSiteMatch.from_sam_tag(tag_value)
 
-        position = read2.reference_end if read2.is_reverse else read2.reference_start
+        # R2 contains the dicore, substract 2 if R2 maps on rev strand
+        position = read2.reference_end - 2 if read2.is_reverse else read2.reference_start
 
         # if R2 has "left side" (e.g. P) then use alignment strand, otherwise negate the strand
         positive_strand = site_match.is_left == (not read2.is_reverse)
