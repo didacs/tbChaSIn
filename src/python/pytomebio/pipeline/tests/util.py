@@ -5,7 +5,6 @@ expected rules.  They are far from comprehensive, as they do not verify the anal
 of each pipeline, which should be done elsewhere.
 """
 
-
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -58,9 +57,8 @@ def run_snakemake(
         configfiles: the optional list of configuration files for Snakemake
         quiet: tells snakemake to not output logging, set to true for debugging failing pipelines
     """
-    filename = pipeline.replace("-", "_") + ".smk"
     src_dir: Path = Path(__file__).absolute().parent.parent.parent.parent.parent
-    snakefile: Path = src_dir / "snakemake" / filename
+    snakefile: Path = src_dir / "snakemake" / pipeline / "Snakefile"
     assert snakefile.is_file(), f"{snakefile} is not a file"
 
     # run it

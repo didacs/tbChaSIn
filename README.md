@@ -118,14 +118,19 @@ The following requires [`seqkit`](https://bioconda.github.io/recipes/seqkit/READ
 wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
 wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt
 
+# The fasta file needs to be unzipped (it can be re-compressed with bgzip if you like)
+gunzip GCF_000001405.40_GRCh38.p14_genomic.fna.gz
+
+# The fasta file needs to be indexed
+samtools faidx GCF_000001405.40_GRCh38.p14_genomic.fna
+
 # Create a sequence dictionary (.dict) to sort and name the contigs
-java -Xmx2g -jar ~/work/git/fgbio/target/scala-2.13/fgbio-2.0.3-da9ecbcc-SNAPSHOT.jar CollectAlternateContigNames \
+fgbio CollectAlternateContigNames \
     -i GCF_000001405.40_GRCh38.p14_assembly_report.txt \
     -o GCF_000001405.40_GRCh38.p14_assembly_report.dict \
     -p UcscName \
     -a SequenceName AssignedMolecule GenBankAccession RefSeqAccession \
-    -s AssembledMolecule UnlocalizedScaffold UnplacedScaffold AltScaffold \
-   --sort-by-sequencing-role
+    -s AssembledMolecule UnlocalizedScaffold UnplacedScaffold AltScaffold
 
 # Update the contig names and sort the contigs in the FASTA
 fgbio UpdateFastaContigNames \
@@ -144,15 +149,16 @@ bwa index GRCh38.p14.full.fasta
 
 ### Execution
 
-Execute the following command to run the pipeline
+Execute the following command to run the pipeline. `pipeline` is the name of one of the pipelines in the `src/snakemake` folder. Note that the `-d` argument is only required if you are executing the script from somewhere other than the root folder of the `tbChaSIn` project.
 
 ```console
 bash src/scripts/run_snakemake.sh \
-    -t /path/to/large/temp/directory \
-    -s src/snakemake/<pipeline>smk \
+    [-d /path/to/snakemake/dir] \
+    -p <pipeline> \
     -c /path/to/config.yml \
     [-g /path/to/global_config.yml] \
-    -o /path/to/output
+    -o /path/to/output \
+    -t /path/to/large/temp/directory
 ```
 
 See [Reference Preparation](#reference-preparation) for how to prepare the reference genome.
@@ -168,14 +174,14 @@ The group level contains configuration that applies to related samples, for exam
 The sample level contains configuration that applies to each sample, for example the name, replicate number, and paths to the input FASTQs.
 
 | Config Key         | Description                                                                                 | Level  | Required | Default |
-|--------------------|---------------------------------------------------------------------------------------------|--------|----------|---------|
+| ------------------ | ------------------------------------------------------------------------------------------- | ------ | -------- | ------- |
 | `name`             | The name of the group                                                                       | Group  | Yes      | NA      |
 | `ref_fasta`        | The absolute path to the reference FASTA, with accompanying BWA index files and FASTA index | Group  | Yes      | NA      |
 | `attachment_sites` | The list of attachment sites (`<name>:<left-seq>:<overhang>:<right-seq>`)                   | Group  | Yes      | NA      |
- | `name`             | The name of the sample                                                                      | Sample | Yes      | NA      |
- | `replicate`        | The replicate number (e.g. 1, 2, 3)                                                         | Sample | Yes      | NA      |
- | `fq1`              | The absolute path to the FASTQ for read 1 (R1)                                              | Sample | Yes      | NA      |
- | `fq2`              | The absolute path to the FASTQ for read 2 (R2)                                              | Sample | Yes      | NA      |
+| `name`             | The name of the sample                                                                      | Sample | Yes      | NA      |
+| `replicate`        | The replicate number (e.g. 1, 2, 3)                                                         | Sample | Yes      | NA      |
+| `fq1`              | The absolute path to the FASTQ for read 1 (R1)                                              | Sample | Yes      | NA      |
+| `fq2`              | The absolute path to the FASTQ for read 2 (R2)                                              | Sample | Yes      | NA      |
 
 The global config is optional and overrides default values for parameters that apply to all samples.
 The global parameters are specific to each workflow.

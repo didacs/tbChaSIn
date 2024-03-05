@@ -6,11 +6,12 @@ usage() {
 Usage: $0 [options] 
 
 Required:
-    -s FILE   Input snakefile
+    -p NAME   Pipeline name
     -o DIR    Output directory
 
 Optional:
     -c FILE   Snakemake configuration file
+    -d DIR    Base directory for pipelines
     -n        Run snakemake in dry run mode
     -t DIR    The temporary directory to use for Java.
 EOF
@@ -20,15 +21,17 @@ EOF
     exit 1
 }
 
+base_dir="$(pwd)/src/snakemake"
 dry_run=""
 tmp_dir=""
 
-while getopts "s:o:c:g:nt:" flag; do
+while getopts "p:o:c:g:d:nt:" flag; do
     case "${flag}" in
-    s) snakefile=${OPTARG} ;;
+    p) pipeline=${OPTARG} ;;
     o) out_dir=${OPTARG} ;;
     c) config_file=${OPTARG} ;;
     g) global_config_file=${OPTARG} ;;
+    d) base_dir=${OPTARG} ;;
     n) dry_run="-n" ;;
     t) tmp_dir=${OPTARG} ;;
     *) usage ;;
@@ -37,8 +40,9 @@ done
 shift $((OPTIND - 1))
 
 extra_args=""
-if [ -z "${snakefile}" ]; then
-    usage "Missing required parameter -s"
+
+if [ -z "${pipeline}" ]; then
+    usage "Missing required parameter -p"
 fi
 if [ -z "${out_dir}" ]; then
     usage "Missing required parameter -o"
@@ -78,7 +82,7 @@ snakemake \
     --rerun-incomplete \
     --jobs "$cores" \
     --resources "mem_gb=$mem_gb" \
-    --snakefile $snakefile \
+    --snakefile "${base_dir}/${pipeline}/Snakefile" \
     --directory $out_dir \
     $dry_run \
     $extra_args
