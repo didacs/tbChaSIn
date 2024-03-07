@@ -23,6 +23,19 @@ yml: Path = Path(config["config_yml"])
 sample_dict: Dict[str, Sample] = from_path(yml=yml)
 samples: List[Sample] = list(sample_dict.values())
 
+# global variables
+READ_STRUCTURE_R1_KEY = "read_structure_r1"
+READ_STRUCTURE_R2_KEY = "read_structure_r2"
+DEFAULT_READ_STRUCTURE_R1 = "11M+T"
+DEFAULT_READ_STRUCTURE_R2 = "+T"
+TRIM_TN5_KEY = "trim_Tn5"
+DEFAULT_TRIM_TN5 = True
+TN5_MAX_MISMATCHES_KEY = "trim_Tn5_max_mismatches"
+DEFAULT_TN5_MAX_MISMATCHES = 1
+ATT_MAX_MISMATCHES_KEY = "trim_att_max_mismatches"
+DEFAULT_ATT_MAX_MISMATCHES = 4
+
+
 ################################################################################
 # Terminal files
 ################################################################################
@@ -71,7 +84,8 @@ rule fgbio_fastq_to_bam:
         fq1=lambda wildcards: sample_dict[wildcards.sample].fq1,
         fq2=lambda wildcards: sample_dict[wildcards.sample].fq2,
     params:
-        read_structure="11M+T +T",  # TODO: make user configurable
+        read_structure_r1=config.get(READ_STRUCTURE_R1_KEY, DEFAULT_READ_STRUCTURE_R1),
+        read_structure_r2=config.get(READ_STRUCTURE_R2_KEY, DEFAULT_READ_STRUCTURE_R2),
     output:
         bam="{group}/{sample}/{sample}.raw.bam",
     log:
@@ -87,7 +101,7 @@ rule fgbio_fastq_to_bam:
           FastqToBam \
           --input {input.fq1} {input.fq2} \
           --output {output.bam} \
-          --read-structure {params.read_structure} \
+          --read-structure {params.read_structure_r1} {params.read_structure_r2} \
           --sample {wildcards.sample} \
           --library {wildcards.sample} \
         &> {log}
@@ -102,6 +116,8 @@ rule cryptic_seq_trim_for_tn5me:
     """
     input:
         bam="{group}/{sample}/{sample}.raw.bam",
+    params:
+        max_mismatches=config.get(TN5_MAX_MISMATCHES_KEY, DEFAULT_TN5_MAX_MISMATCHES),
     output:
         keep="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
         reject="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.reject.bam",
@@ -117,6 +133,7 @@ rule cryptic_seq_trim_for_tn5me:
             --keep-bam {output.keep} \
             --reject-bam {output.reject} \
             --out-metrics {output.metric_tsv} \
+            --max-mismatches {params.max_mismatches} \
         &> {log}
         """
 
@@ -130,11 +147,12 @@ rule trim_leading_attachment_site:
     input:
         bam=(
             "{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam"
-            if config.get("trim_Tn5", True)
+            if config.get(TRIM_TN5_KEY, DEFAULT_TRIM_TN5)
             else "{group}/{sample}/{sample}.raw.bam"
         ),
     params:
         attachment_sites=lambda wildcards: sample_dict[wildcards.sample].attachment_sites,
+        max_mismatches=config.get(ATT_MAX_MISMATCHES_KEY, DEFAULT_ATT_MAX_MISMATCHES),
     output:
         keep="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
         reject="{group}/{sample}/{sample}.trim_leading_attachment_site.reject.bam",
@@ -151,7 +169,7 @@ rule trim_leading_attachment_site:
             --reject-bam {output.reject} \
             --out-metrics {output.metric_tsv} \
             --attachment-site {params.attachment_sites} \
-            --max-mismatches 4 \
+            --max-mismatches {params.max_mismatches} \
         &> {log}
         """
 

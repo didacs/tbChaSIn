@@ -334,9 +334,13 @@ settings:
 
 The global parameters supported for Cryptic-seq are listed in the following table. A configuration file with the default values is [provided](src/snakemake/cryptic_seq.config.yaml).
 
-| Config Key | Description | Default |
-| ---------------- | ---------------- | ---------------- |
-| trim_Tn5 | Whether to trim the Tn5 mosiac end sequence from the start of R1. | `True`|
+| Config Key              | Description                                                                                                 | Default |
+|-------------------------|-------------------------------------------------------------------------------------------------------------|----|
+| read_structure_r1       | R1 read structure for _fgbio FastqToBam_, made up of '\<number>\<operator>' pairs                           | 11M+T |
+| read_structure_r2       | R2 read structure for _fgbio FastqToBam_, made up of '\<number>\<operator>' pairs                           | +T |
+| trim_Tn5                | Whether to trim the Tn5 mosiac end sequence from the start of R1                                            | `True` |
+| trim_Tn5_max_mismatches | Maximum number of mismatches to allow Tn5 trimming                                                          | 1  |
+| trim_att_max_mismatches | Maximum number of mismatches to allow leading attachment site trimming                                      | 4  |
 
 ##### Durant et al.
 
