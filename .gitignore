@@ -16,3 +16,6 @@
 
 # VSCode dir
 .vscode
+
+# MacOS
+.DS_Store

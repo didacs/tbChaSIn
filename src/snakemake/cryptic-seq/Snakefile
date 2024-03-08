@@ -1,18 +1,41 @@
 ################################################################################
 # Pipeline for CRYPTIC Seq Analysis
 ################################################################################
-
+import copy
+import os
 from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
 
+from attrs import define
+import yaml
+
 from pytomebio.pipeline import snakemake_utils
 from pytomebio.pipeline.samples import from_path
 from pytomebio.pipeline.samples import Sample
-import os
-import copy
-from attrs import define
+
+################################################################################
+# Global variables and methods
+################################################################################
+
+SNAKEFILE_PATH = Path(workflow.snakefile)
+DEFAULT_GLOBAL_CONFIG = SNAKEFILE_PATH.parent / "config.yaml"
+
+GLOBAL_DEFAULTS = {}
+if DEFAULT_GLOBAL_CONFIG.exists():
+    with open(DEFAULT_GLOBAL_CONFIG) as fd:
+        GLOBAL_DEFAULTS = yaml.safe_load(fd)
+
+
+def get_global(key: str) -> Optional[Any]:
+    """
+    Returns the user-specified value for the given global configuration
+    parameter, or the default from the `config.yaml` file in the same
+    directory as this workflow.
+    """
+    return config.get(key) or GLOBAL_DEFAULTS.get(key)
 
 
 ################################################################################
@@ -23,17 +46,13 @@ yml: Path = Path(config["config_yml"])
 sample_dict: Dict[str, Sample] = from_path(yml=yml)
 samples: List[Sample] = list(sample_dict.values())
 
+
 # global variables
 READ_STRUCTURE_R1_KEY = "read_structure_r1"
 READ_STRUCTURE_R2_KEY = "read_structure_r2"
-DEFAULT_READ_STRUCTURE_R1 = "11M+T"
-DEFAULT_READ_STRUCTURE_R2 = "+T"
 TRIM_TN5_KEY = "trim_Tn5"
-DEFAULT_TRIM_TN5 = True
 TN5_MAX_MISMATCHES_KEY = "trim_Tn5_max_mismatches"
-DEFAULT_TN5_MAX_MISMATCHES = 1
 ATT_MAX_MISMATCHES_KEY = "trim_att_max_mismatches"
-DEFAULT_ATT_MAX_MISMATCHES = 4
 
 
 ################################################################################
@@ -66,7 +85,7 @@ all_terminal_files.append(Path("sites.per_sample.txt"))
 
 # Block of code that gets called if the snakemake pipeline exits with an error.
 onerror:
-    snakemake_utils.on_error(snakefile=Path(__file__), config=config, log=Path(log))
+    snakemake_utils.on_error(snakefile=SNAKEFILE_PATH, config=config, log=Path(log))
 
 
 rule all:
@@ -84,8 +103,8 @@ rule fgbio_fastq_to_bam:
         fq1=lambda wildcards: sample_dict[wildcards.sample].fq1,
         fq2=lambda wildcards: sample_dict[wildcards.sample].fq2,
     params:
-        read_structure_r1=config.get(READ_STRUCTURE_R1_KEY, DEFAULT_READ_STRUCTURE_R1),
-        read_structure_r2=config.get(READ_STRUCTURE_R2_KEY, DEFAULT_READ_STRUCTURE_R2),
+        read_structure_r1=get_global(READ_STRUCTURE_R1_KEY),
+        read_structure_r2=get_global(READ_STRUCTURE_R2_KEY),
     output:
         bam="{group}/{sample}/{sample}.raw.bam",
     log:
@@ -117,7 +136,7 @@ rule cryptic_seq_trim_for_tn5me:
     input:
         bam="{group}/{sample}/{sample}.raw.bam",
     params:
-        max_mismatches=config.get(TN5_MAX_MISMATCHES_KEY, DEFAULT_TN5_MAX_MISMATCHES),
+        max_mismatches=get_global(TN5_MAX_MISMATCHES_KEY),
     output:
         keep="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam",
         reject="{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.reject.bam",
@@ -147,12 +166,12 @@ rule trim_leading_attachment_site:
     input:
         bam=(
             "{group}/{sample}/{sample}.cryptic_seq.trim_for_tn5me.keep.bam"
-            if config.get(TRIM_TN5_KEY, DEFAULT_TRIM_TN5)
+            if get_global(TRIM_TN5_KEY)
             else "{group}/{sample}/{sample}.raw.bam"
         ),
     params:
         attachment_sites=lambda wildcards: sample_dict[wildcards.sample].attachment_sites,
-        max_mismatches=config.get(ATT_MAX_MISMATCHES_KEY, DEFAULT_ATT_MAX_MISMATCHES),
+        max_mismatches=get_global(ATT_MAX_MISMATCHES_KEY),
     output:
         keep="{group}/{sample}/{sample}.trim_leading_attachment_site.keep.bam",
         reject="{group}/{sample}/{sample}.trim_leading_attachment_site.reject.bam",
