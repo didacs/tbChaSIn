@@ -35,7 +35,11 @@ def get_global(key: str) -> Optional[Any]:
     parameter, or the default from the `config.yaml` file in the same
     directory as this workflow.
     """
-    return config.get(key) or GLOBAL_DEFAULTS.get(key)
+    user_value = config.get(key)
+    if user_value is not None:
+        return user_value
+    else:
+        return GLOBAL_DEFAULTS.get(key)
 
 
 ################################################################################
