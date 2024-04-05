@@ -5,14 +5,19 @@
 *.pyc
 *.pyo
 
+# Build artifacts
+build/
+dist/
+
 # MyPy Cache directory
 .mypy_cache
 
-# for develop installs
-*.egg-info
-
 # snakemake
 .snakemake
+
+# nextflow
+.nextflow*
+work/
 
 # VSCode dir
 .vscode

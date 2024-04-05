@@ -11,9 +11,9 @@ from typing import Tuple
 from attr import frozen
 from fgpyo.util.metric import Metric
 
+from pytomebio.core.sites import FindSitesMetric
 from pytomebio.pipeline.samples import Sample as ConfigSample
 from pytomebio.pipeline.samples import from_path
-from pytomebio.tools.change_seq.find_sites import FindSitesMetric
 
 
 @frozen

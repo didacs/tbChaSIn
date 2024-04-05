@@ -19,17 +19,27 @@ Tools and pipelines for various off-target detection assays:
         - [CHANGE-Seq](#change-seq)
         - [Cryptic-seq](#cryptic-seq)
         - [Durant et al.](#durant-et-al)
+      - [Nextflow](#nextflow)
 
 <!---toc end-->
 
 ## Local Setup
 
-- [Install conda][conda-link]
+- [Install poetry][poetry-link]
 
-- Install mamba
+It is important that poetry is *not* installed in the same environment as your package dependencies. We recommend using the "official" installer:
 
 ```console
-conda install -c conda-forge mamba
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+- [Install mamba][mamba-link]
+
+We recommend using the [miniforge installer][miniforge-link]. Download the installer for your operating system and run it. For example:
+
+```console
+chmod +x Miniforge3-MacOSX-arm64.sh
+./Miniforge3-MacOSX-arm64.sh
 ```
 
 - Get a local copy of the `tbChaSIn` repo
@@ -41,7 +51,6 @@ cd tbChaSIn
 
 - Create the `tbChaSIn` conda environment
 
-
 ```console
 mamba env create -f environment.yml
 ```
@@ -52,12 +61,10 @@ mamba env create -f environment.yml
 mamba activate tbChaSIn
 ```
 
-
 - Install `pytomebio` (developer mode)
 
-
 ```console
-python setup.py develop
+poetry install
 ```
 
 - Ensure `realpath` is available
@@ -73,6 +80,8 @@ On Ubuntu 16.04 or higher:
 ```bash
 sudo apt-get install coreutils
 ```
+
+To be able to use any of the tools that interact with the Benchling warehouse, you need to configure SSL/TLS as described [here][benchling-link].
 
 ### Running Tests
 
@@ -453,5 +462,55 @@ settings:
 
 *** Important ***: `ref_fasta` is the genome _with_ attD, while `genome_fasta` _does not_ contain attD.
 
+#### Nextflow
 
-[conda-link]: https://docs.conda.io/projects/conda/en/latest/user-guide/install/
+These pipelines are in the process of being ported to Nextflow. The first step is to wrap the Snakemake pipeline using [snk][snk-link] inside a Docker container and call it from a Nextflow process. There is an initial step that creates the configuration file for the Snakemake workflow from a metasheet.
+
+To build the Docker container:
+
+```
+docker build -t tomebio/cryptic-seq:1.0 .
+```
+
+On an ARM-based Mac, some additional options are required:
+
+```
+docker build \
+  --platform linux/amd64 \
+  --load \
+  -t tomebio/cryptic-seq:1.0 .
+```
+
+To run the workflow:
+
+```
+nextflow run \
+  src/nextflow/cryptic-seq \
+  --metasheet <metasheet.[xlsx|txt]> \
+  --genomes_json <genomes.json> \
+  --references_json <references.json> \
+  --fastq_dir <fastq_dir> \
+  [--output_dir <output_dir> ] \
+  [--prefix <output_prefix>] \
+  [-with-report report.html] \
+  # this option only required on ARM Mac
+  [-profile rosetta] \
+  # this option only required on linux systems where it is required to run docker as root
+  [-profile linux]  
+```
+
+The `genomes.json` file contains mappings between species name and genome build.
+
+The `references.json` file contains mappings between genome build and path to the folder that contains the reference (FASTA file and BWA index).
+
+The `fastq_dir` is the root directory where FASTQ files live. The FASTQ file names may be specified in the metasheet `fq1` and `fq2` columns as relative paths under the `fastq_dir`, or the `--fastq_name_prefix` option may be specified with a glob expression that can contain placeholders for any of the columns in the metasheet, as well as the special `read` placeholder which has a value of `1` for read 1 files and `2` for read 2 files, e.g. `**/{sample_name}*/*_R{read}_*.gz`.
+
+The `output_dir` is the directory where pipeline outputs will be published. It defaults to the directory where the workflow is launched.
+
+The `output_prefix` is the name of the subdirectory within `output_dir` where pipeline outputs will be published, and is also used to name the run-level outputs. It defaults to the name of the `metasheet` (without extension).
+
+[poetry-link]: https://python-poetry.org/docs/#installation
+[mamba-link]: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
+[miniforge-link]: https://github.com/conda-forge/miniforge
+[snk-link]: https://github.com/Wytamma/snk
+[benchling-link]: https://docs.benchling.com/docs/getting-started

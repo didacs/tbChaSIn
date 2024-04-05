@@ -10,7 +10,8 @@ Required:
     -o DIR    Output directory
 
 Optional:
-    -c FILE   Snakemake configuration file
+    -c FILE   Sample configuration file
+    -g FILE   Snakemake configuration file
     -d DIR    Base directory for pipelines
     -n        Run snakemake in dry run mode
     -t DIR    The temporary directory to use for Java.
@@ -24,6 +25,7 @@ EOF
 base_dir="$(pwd)/src/snakemake"
 dry_run=""
 tmp_dir=""
+extra_args=""
 
 while getopts "p:o:c:g:d:nt:" flag; do
     case "${flag}" in
@@ -38,8 +40,6 @@ while getopts "p:o:c:g:d:nt:" flag; do
     esac
 done
 shift $((OPTIND - 1))
-
-extra_args=""
 
 if [ -z "${pipeline}" ]; then
     usage "Missing required parameter -p"

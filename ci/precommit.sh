@@ -62,10 +62,12 @@ function run() {
     fi
 }
 
-fix='false'
-while getopts "f" flag; do
+fix_format='false'
+fix_lints='false'
+while getopts "fl" flag; do
     case "${flag}" in
-    f) fix='true' ;;
+    f) fix_format='true' ;;
+    l) fix_lints='true' ;;
     *) usage ;;
     esac
 done
@@ -80,16 +82,23 @@ if [[ -z ${CONDA_DEFAULT_ENV} ]]; then
     exit 1
 fi
 
-if ${fix}; then
+if ${fix_format}; then
     pushd "$root" >/dev/null
-    banner "Executing in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
+    banner "Executing style fixes in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
     run "Snakemake Style Formatting" "snakefmt --line-length 99 ${repo_root}/src/snakemake"
     run "Python Style Formatting" "ruff format --config=$parent/ruff.toml pytomebio"
     popd >/dev/null
 fi
 
+if ${fix_lints}; then
+    pushd "$root" >/dev/null
+    banner "Executing lint fixes in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
+    run "Python Lint Fixing" "ruff check --config=$parent/ruff.toml --fix pytomebio"
+    popd >/dev/null
+fi
+
 pushd "$root" >/dev/null
-banner "Executing in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
+banner "Executing checks in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
 run "Shell Check (precommit)" "shellcheck ${repo_root}/ci/precommit.sh"
 run "Shell Check (src/scripts)" "shellcheck ${repo_root}/src/scripts/*sh"
 run "Snakemake Style Checking" "snakefmt --check --line-length 99 ${repo_root}/src/snakemake"

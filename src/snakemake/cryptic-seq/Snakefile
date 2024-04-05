@@ -71,7 +71,6 @@ extensions = [
     "sites.txt",
 ]
 
-
 all_terminal_files: List[Path] = [
     Path(f"{sample.group}/{sample.name}/{sample.name}.{ext}")
     for sample in samples
@@ -197,6 +196,8 @@ rule trim_leading_attachment_site:
         """
 
 
+# TODO: rule and output files should be named `cryptic_seq` rather than `change_seq`
+# TODO: move `trim-for-tn5me` tool to `common`
 # TODO: min score is set low
 rule change_seq_trim_for_tn5me:
     """Trims the end of R2s for the Tn5 mosaic end.
@@ -324,6 +325,7 @@ rule mark_duplicates:
         """
         picard \
           -Dsamjdk.use_async_io_read_samtools=true \
+          -Djdk.lang.Process.launchMechanism=vfork \
           -Duse_async_io_write_samtools=true \
           -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
           MarkDuplicates \
@@ -361,6 +363,7 @@ rule picard_collect_alignment_summary_metrics:
         """
         picard \
           -Dsamjdk.use_async_io_read_samtools=true \
+          -Djdk.lang.Process.launchMechanism=vfork \
           -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
           CollectAlignmentSummaryMetrics \
           --INPUT {input.bam} \
@@ -392,6 +395,7 @@ rule picard_collect_multiple_metrics:
         """
         picard \
           -Dsamjdk.use_async_io_read_samtools=true \
+          -Djdk.lang.Process.launchMechanism=vfork \
           -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
           CollectMultipleMetrics \
           --INPUT {input.bam} \

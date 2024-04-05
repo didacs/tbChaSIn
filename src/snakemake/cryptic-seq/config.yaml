@@ -3,3 +3,4 @@ trim_Tn5_max_mismatches: 1
 trim_att_max_mismatches: 4
 read_structure_r1: "11M+T"
 read_structure_r2: "+T"
+config_yml: null

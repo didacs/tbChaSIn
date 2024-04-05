@@ -14,7 +14,16 @@ from pytomebio.tools.change_seq.fastq_to_bam import fastq_to_bam as change_seq_f
 from pytomebio.tools.change_seq.find_sites import find_sites as change_seq_find_sites
 from pytomebio.tools.change_seq.trim_for_tn5me import trim_for_tn5me as change_seq_trim_for_tn5me
 from pytomebio.tools.common.collate_sites import collate_sites as common_collate_sites
+from pytomebio.tools.cryptic_seq.create_config_from_metasheet import (
+    create_config_from_metasheet as cryptic_seq_create_config_from_metasheet,
+)
+from pytomebio.tools.cryptic_seq.create_metasheet_from_benchling import (
+    create_metasheet_from_benchling as cryptic_seq_create_metasheet_from_benchling,
+)
 from pytomebio.tools.cryptic_seq.find_sites import find_sites as cryptic_seq_find_sites
+from pytomebio.tools.cryptic_seq.resolve_references import (
+    resolve_references as cryptic_seq_resolve_references,
+)
 from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me as cryptic_seq_trim_for_tn5me
 from pytomebio.tools.cryptic_seq.trim_leading_attachment_site import (
     trim_leading_attachment_site as cryptic_trim_leading_attachment_site,
@@ -31,7 +40,10 @@ TOOLS: Dict[str, List[Callable]] = {
         change_seq_trim_for_tn5me,
     ],
     "cryptic-seq": [
+        cryptic_seq_create_metasheet_from_benchling,
+        cryptic_seq_create_config_from_metasheet,
         cryptic_seq_find_sites,
+        cryptic_seq_resolve_references,
         cryptic_seq_trim_for_tn5me,
         cryptic_trim_leading_attachment_site,
     ],

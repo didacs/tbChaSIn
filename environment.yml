@@ -4,9 +4,18 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  # Python
   - python=3.9.18
-  # Pipeline
+  - pip=24.0
+  # Nextflow
+  - nextflow=23.10.1
+  # Snakemake
   - snakemake-minimal=7.32.4
+  - git=2.40.1 # required by snk
+  - GitPython=3.1.31 # fix at version required by snk
+  - pip:
+      - snk==0.23.0
+  # Pipeline
   - bwa=0.7.17
   - picard=3.1.1 # can use picard-slim when R is not required
   - fgbio-minimal=2.2.1
@@ -18,13 +27,18 @@ dependencies:
   - defopt=6.4.0
   - pysam=0.22.0
   - biopython=1.83
+  - fgpyo=0.2.0
+  - pandas=2.2.1
+  - openpyxl=3.1.2
+  - psycopg=3.1.18
   # Testing
   - pytest=8.0.0
+  - pytest-postgresql=6.0.0
   - ruff=0.2.1
   - mypy=1.8.0
   - shellcheck=0.9.0
   - types-pyyaml=6.0.12.12
-  - pip=24.0
-  - fgpyo=0.2.0
   - fastp=0.23.4
   - snakefmt=0.10.0
+  # Other
+  - seqkit=2.7.0 # required to build the reference
