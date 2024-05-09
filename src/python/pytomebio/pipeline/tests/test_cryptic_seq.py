@@ -44,6 +44,7 @@ def test_cryptic_seq(tmp_path: Path) -> None:
         "picard_collect_alignment_summary_metrics": 3,
         "picard_collect_multiple_metrics": 3,
         "trim_leading_attachment_site": 3,
+        "annotate_sites": 1,
     }
 
     config: Dict[str, Any] = {

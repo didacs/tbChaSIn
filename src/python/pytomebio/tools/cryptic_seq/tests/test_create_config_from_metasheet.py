@@ -42,7 +42,7 @@ def test_create_config_from_metasheet(
     groups_by_name = {group["name"]: group for group in groups}
 
     attB_NN = groups_by_name["attB_NN"]
-    assert Path(attB_NN["ref_fasta"]) == Path("references/GRCh38.p14/GRCh38.p14.fasta")
+    assert Path(attB_NN["ref_fasta"]) == Path("references/GRCh38.p14/GRCh38.p14.fasta.gz")
     assert attB_NN["attachment_sites"] == [attachment_sites["FRAG452"]]
     assert len(attB_NN["samples"]) == 3
     assert set(sample["name"] for sample in attB_NN["samples"]) == sample_names
@@ -53,7 +53,7 @@ def test_create_config_from_metasheet(
     )
 
     attP_NN = groups_by_name["attP_NN"]
-    assert Path(attP_NN["ref_fasta"]) == Path("references/GRCh37/GRCh37.fasta")
+    assert Path(attP_NN["ref_fasta"]) == Path("references/hg19/hg19.fasta.gz")
     assert attP_NN["attachment_sites"] == [attachment_sites["FRAG452"]]
     assert len(attP_NN["samples"]) == 1
     assert set(sample["name"] for sample in attP_NN["samples"]) == sample_names2

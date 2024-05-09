@@ -8,14 +8,13 @@ from typing import List
 
 from pytomebio.pipeline import snakemake_utils
 from pytomebio.pipeline.samples import Sample
-from pytomebio.pipeline.samples import from_path
 
 ################################################################################
 # Utility methods and variables
 ################################################################################
 
 yml: Path = Path(config["config_yml"])
-sample_dict: Dict[str, Sample] = from_path(yml=yml)
+sample_dict: Dict[str, Sample] = Sample.from_yml(path=yml)
 samples: List[Sample] = list(sample_dict.values())
 
 ################################################################################
@@ -24,7 +23,11 @@ samples: List[Sample] = list(sample_dict.values())
 
 
 # File extensions to generate
-extensions = ["with_donor.mapped.flagstat.txt", "genome.mapped.flagstat.txt", "sites.txt"]
+extensions = [
+    "with_donor.mapped.flagstat.txt",
+    "genome.mapped.flagstat.txt",
+    "sites.txt",
+]
 
 all_terminal_files: List[Path] = [
     Path(f"{sample.group}/{sample.name}/{sample.name}.{ext}")

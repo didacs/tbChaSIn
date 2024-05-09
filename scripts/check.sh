@@ -21,6 +21,7 @@ Usage: $0 [options]
 
 Optional:
     -f    Automatically fix formatting.
+    -l    Automatically fix lints.
 EOF
     # shellcheck disable=SC2188
     >&2
@@ -86,25 +87,24 @@ if ${fix_format}; then
     pushd "$root" >/dev/null
     banner "Executing style fixes in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
     run "Snakemake Style Formatting" "snakefmt --line-length 99 ${repo_root}/src/snakemake"
-    run "Python Style Formatting" "ruff format --config=$parent/ruff.toml pytomebio"
+    run "Python Style Formatting" "ruff format pytomebio"
     popd >/dev/null
 fi
 
 if ${fix_lints}; then
     pushd "$root" >/dev/null
     banner "Executing lint fixes in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
-    run "Python Lint Fixing" "ruff check --config=$parent/ruff.toml --fix pytomebio"
+    run "Python Lint Fixing" "ruff check --fix pytomebio"
     popd >/dev/null
 fi
 
 pushd "$root" >/dev/null
 banner "Executing checks in conda environment ${CONDA_DEFAULT_ENV} in directory ${root}"
-run "Shell Check (precommit)" "shellcheck ${repo_root}/ci/precommit.sh"
-run "Shell Check (src/scripts)" "shellcheck ${repo_root}/src/scripts/*sh"
+run "Shell Check" "shellcheck ${repo_root}/scripts/*sh"
 run "Snakemake Style Checking" "snakefmt --check --line-length 99 ${repo_root}/src/snakemake"
-run "Python Style Checking" "ruff format --config=$parent/ruff.toml --check pytomebio"
-run "Python Linting" "ruff check --config=$parent/ruff.toml pytomebio"
-run "Python Type Checking" "mypy -p pytomebio --config $parent/mypy.ini"
+run "Python Style Checking" "ruff format --check pytomebio"
+run "Python Linting" "ruff check pytomebio"
+run "Python Type Checking" "mypy -p pytomebio"
 run "Python Unit Tests" "pytest -vv -r sx pytomebio"
 popd >/dev/null
 

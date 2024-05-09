@@ -13,7 +13,6 @@ from attrs import define
 import yaml
 
 from pytomebio.pipeline import snakemake_utils
-from pytomebio.pipeline.samples import from_path
 from pytomebio.pipeline.samples import Sample
 
 ################################################################################
@@ -47,8 +46,19 @@ def get_global(key: str) -> Optional[Any]:
 ################################################################################
 
 yml: Path = Path(config["config_yml"])
-sample_dict: Dict[str, Sample] = from_path(yml=yml)
+sample_dict: Dict[str, Sample] = Sample.from_yml(path=yml)
 samples: List[Sample] = list(sample_dict.values())
+
+
+def get_default_annotation_fasta() -> Path:
+    all_fastas = set(sample.ref_fasta for sample in samples)
+    if len(all_fastas) == 1:
+        return all_fastas.pop()
+    else:
+        raise Exception(
+            "Could not determine the annotation FASTA automatically since multiple different "
+            "references are used by samples; please specify '--annotation-fasta'."
+        )
 
 
 # global variables
@@ -57,6 +67,8 @@ READ_STRUCTURE_R2_KEY = "read_structure_r2"
 TRIM_TN5_KEY = "trim_Tn5"
 TN5_MAX_MISMATCHES_KEY = "trim_Tn5_max_mismatches"
 ATT_MAX_MISMATCHES_KEY = "trim_att_max_mismatches"
+UMI_FROM_READ_NAME = "umi_from_read_name"
+ANNOTATION_FASTA = "annotation_fasta"
 
 
 ################################################################################
@@ -79,6 +91,7 @@ all_terminal_files: List[Path] = [
 
 all_terminal_files.append(Path("sequencing_quality_report.html"))
 all_terminal_files.append(Path("sites.per_sample.txt"))
+all_terminal_files.append(Path("sites.annotated.xlsx"))
 
 
 ################################################################################
@@ -304,6 +317,32 @@ rule fgbio_clip_bam:
         """
 
 
+rule fgbio_copy_umi_from_read_name:
+    """Copies the UMI at the end of the BAM’s read name to the RX tag
+    Runs:
+    - fgbio's CopyUmiFromReadName
+    """
+    input:
+        bam="{group}/{sample}/{sample}.clipped.bam",
+    output:
+        bam="{group}/{sample}/{sample}.umi_from_read_name.bam",
+    log:
+        "logs/{group}/{sample}.fgbio_copy_umi_from_read_name.log",
+    resources:
+        mem_gb=4,
+        jvm_gb=4,
+    shell:
+        """
+        fgbio \
+          -Dsamjdk.use_async_io_read_samtools=true \
+          -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx{resources.jvm_gb}g \
+          CopyUmiFromReadName \
+          --input {input.bam} \
+          --output {output.bam} \
+        &> {log}
+        """
+
+
 rule mark_duplicates:
     """Marks PCR duplicates
 
@@ -311,7 +350,11 @@ rule mark_duplicates:
     - picard MarkDuplicates
     """
     input:
-        bam="{group}/{sample}/{sample}.clipped.bam",
+        bam=(
+            "{group}/{sample}/{sample}.clipped.bam"
+            if not get_global(UMI_FROM_READ_NAME)
+            else "{group}/{sample}/{sample}.umi_from_read_name.bam"
+        ),
     output:
         bam="{group}/{sample}/{sample}.deduped.bam",
         txt="{group}/{sample}/{sample}.mark_duplicates.txt",
@@ -537,5 +580,32 @@ rule collate_sites:
         tomebio-tools common collate-sites \
          --in-yml {input.yml} \
          --out-prefix {params.out_pre} \
+        &> {log}
+        """
+
+
+rule annotate_sites:
+    """Annotates cryptic sites and compiles output tables into a multi-sheet excel file 
+
+    Runs:
+    - tomebio-tools cryptic-seq annotate-sites
+    """
+    input:
+        yml=yml,
+        txt=[f"{sample.group}/{sample.name}/{sample.name}.sites.txt" for sample in samples],
+    params:
+        fasta=get_global(ANNOTATION_FASTA) or get_default_annotation_fasta(),
+    output:
+        xlsx="sites.annotated.xlsx",
+    log:
+        "logs/annotate_sites.log",
+    resources:
+        mem_gb=2,
+    shell:
+        """
+        tomebio-tools cryptic-seq annotate-sites \
+        --in_yml {input.yml} \
+        --match_index_base {params.fasta} \
+        --output {output.xlsx} \
         &> {log}
         """

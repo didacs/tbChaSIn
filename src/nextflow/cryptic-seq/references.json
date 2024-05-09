@@ -1,3 +1,4 @@
 {
-    "GRCh38/hg38": "/data/refs/GRCh38.p14/"
+    "GRCh38/hg38": "data/references/GRCh38.p14/",
+    "GRCm39/mm39": "data/references/GRCm39/"
 }

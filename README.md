@@ -9,37 +9,58 @@ Tools and pipelines for various off-target detection assays:
 <!---toc start-->
 - [tbChaSIn](#tbchasin)
   - [Local Setup](#local-setup)
-    - [Running Tests](#running-tests)
+    - [Running Code Checks](#running-code-checks)
+  - [Design](#design)
   - [Run the Pipeline](#run-the-pipeline)
     - [Reference Preparation](#reference-preparation)
       - [CRISPR Reference Preparation](#crispr-reference-preparation)
       - [Integrase Reference Preparation](#integrase-reference-preparation)
-    - [Execution](#execution)
+    - [Execution (Nextflow)](#execution-nextflow)
+      - [Building Docker images](#building-docker-images)
+      - [Setting secrets](#setting-secrets)
+      - [Running the workflow](#running-the-workflow)
+    - [Execution (Snakemake)](#execution-snakemake)
       - [Config](#config)
         - [CHANGE-Seq](#change-seq)
         - [Cryptic-seq](#cryptic-seq)
         - [Durant et al.](#durant-et-al)
-      - [Nextflow](#nextflow)
+    - [Development](#development)
+      - [Python toolkit](#python-toolkit)
+      - [Converting Snakemake to Nextflow](#converting-snakemake-to-nextflow)
+        - [Adding a process](#adding-a-process)
+      - [Integration tests](#integration-tests)
 
 <!---toc end-->
 
 ## Local Setup
 
-- [Install poetry][poetry-link]
+- [Install `poetry`][poetry-link]
 
-It is important that poetry is *not* installed in the same environment as your package dependencies. We recommend using the "official" installer:
+It is important that `poetry` is *not* installed in the same environment as your package dependencies. We recommend using the "official" installer:
 
 ```console
 curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-- [Install mamba][mamba-link]
+If you already have poetry installed, make sure it is version `1.7.0` or greater:
+
+```console
+poetry --version
+```
+
+- [Install `mamba`][mamba-link]
 
 We recommend using the [miniforge installer][miniforge-link]. Download the installer for your operating system and run it. For example:
 
 ```console
 chmod +x Miniforge3-MacOSX-arm64.sh
 ./Miniforge3-MacOSX-arm64.sh
+```
+
+If you already have `mamba` installed, make sure it is version `1.3.0` or greater:
+
+```console
+mamba --version
 ```
 
 - Get a local copy of the `tbChaSIn` repo
@@ -49,13 +70,13 @@ git clone git@github.com:tomebio/tbChaSIn.git
 cd tbChaSIn
 ```
 
-- Create the `tbChaSIn` conda environment
+- Create and activate the environment
 
 ```console
-mamba env create -f environment.yml
+bash scripts/mamba.sh -A [-m micromamba]
 ```
 
-- Activate the `tbChaSIn` conda environment
+You can also activate the environment manually:
 
 ```console
 mamba activate tbChaSIn
@@ -64,10 +85,10 @@ mamba activate tbChaSIn
 - Install `pytomebio` (developer mode)
 
 ```console
-poetry install
+cd src/python && poetry install
 ```
 
-- Ensure `realpath` is available
+- If you plan to run the Snakemake workflows, ensure `realpath` is available
 
 On OSX:
 
@@ -81,14 +102,14 @@ On Ubuntu 16.04 or higher:
 sudo apt-get install coreutils
 ```
 
-To be able to use any of the tools that interact with the Benchling warehouse, you need to configure SSL/TLS as described [here][benchling-link].
+- To be able to use any of the tools that interact with the Benchling warehouse, you need to configure SSL/TLS as described [here][benchling-link].
 
-### Running Tests
+### Running Code Checks
 
-To run tests, execute:
+To run code checks, execute:
 
 ```console
-bash ci/precommit.sh [-f]
+bash scripts/precommit.sh [-f] [-l]
 ```
 
 This will run:
@@ -100,7 +121,31 @@ This will run:
 5. Code style checking of Shell code (with `shellcheck`)
 6. Code style checking of Snakemake code (with `snakefmt`)
 
-If the optional `-f` flag is specified, then the Python and Snakemake files will be automatically formatted prior to applying the checks.
+If the optional `-f` flag is specified, then the Python and Snakemake files will be automatically formatted prior to applying the checks. Similarly, use the `-l` flag to fix any lints that can be fixed automatically.
+
+## Design
+
+The Nextflow workflows are designed to run either locally or using AWS Batch. To facilitate this, we must consider that input files (e.g., FASTQs and references) may be stored remotely (e.g., in AWS S3) and "staged" (i.e., Nextflow manages the automatic downloading of remote inputs to the local system) at runtime.
+
+The minimal information to run the pipeline is:
+
+* The CTB ID of the experiment, which is used to look up the experiment metadata in Benchling
+* The root location of the references used in the experiment
+* The root location of the FASTQ files for the experiment
+
+The workflow runs the following steps:
+
+1. Retrieve the metadata from Benchling for the given CTB ID, specified by the `--ctb_id` option, and create a "metasheet" (aka a sample sheet).
+   1. If you already have a metasheet in the correct format, you can specify it using `--metasheet` rather than using the `--ctb_id` option.
+2. For each sample in the metasheet:
+   1. If the genome build is not known, then use the mapping between species and genome build (specified by the `--genomes_json` option) to determine it, or fall back to the default genome (specified by the `--default_genome` option).
+   2. Map the genome build to a reference using the mapping specified by the `--references_json` option, otherwise assume the reference has the same name as the genome build, or fall back to the default reference (specified by the `--default_reference` option) if the genome build is not known>
+   3. If the reference is specified as a relative path, then resolve it to an absolute path using the root folder specified by the `--references_dir` option. Note that `--references_dir` may specify a URI, such as an S3 bucket.
+   4. Determine the names of the FASTQ files using the pattern string specified by `--fastq_name_pattern`. This pattern string can contain variables of the form `${var}`, which are replaced with the value from the corresponding column in the metasheet. There is also a special `${read}` variable with the read number for the FASTQ (1 or 2).
+   5. If `--fastq_name_pattern` specifies a relative path, then resolve it to an absolute path using the root folder specified by `--fastq_dir`, which may also specify a URI, such as an S3 bucket.
+3. Load each sample in the metasheet into a [native Groovy object](src/nextflow/cryptic-seq/lib/Meta.groovy).
+4. Run all of the sample-specific steps in the pipeline in parallel over all the samples.
+5. Aggregate the per-sample results and run the aggregate steps in the pipeline.
 
 ## Run the Pipeline
 
@@ -112,56 +157,162 @@ TBD
 
 #### Integrase Reference Preparation
 
-For Integrase samples, the GRCh38 (p14) genome is modified to append:
+For Integrase samples, a reference genome (e.g. GRCh38.p14) is modified to append:
 
 1. The full length attB sequence
 2. The full length attP sequence
 3. The full length attB-containing plasmid sequence
 
-
-The following requires [`seqkit`](https://bioconda.github.io/recipes/seqkit/README.html) and the latest development version of fgbio (2.0.3 with git-hash `da9ecbcc` or higher):
+The [build_reference.sh](scripts/build_reference.sh) script will build the reference for you:
 
 ```console
-# Get the FASTA and assembly report.  The latter is needed to deterministicall sort and name
-# the contigs downloaded in the FASTA
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt
-
-# The fasta file needs to be unzipped (it can be re-compressed with bgzip if you like)
-gunzip GCF_000001405.40_GRCh38.p14_genomic.fna.gz
-
-# The fasta file needs to be indexed
-samtools faidx GCF_000001405.40_GRCh38.p14_genomic.fna
-
-# Create a sequence dictionary (.dict) to sort and name the contigs
-fgbio CollectAlternateContigNames \
-    -i GCF_000001405.40_GRCh38.p14_assembly_report.txt \
-    -o GCF_000001405.40_GRCh38.p14_assembly_report.dict \
-    -p UcscName \
-    -a SequenceName AssignedMolecule GenBankAccession RefSeqAccession \
-    -s AssembledMolecule UnlocalizedScaffold UnplacedScaffold AltScaffold
-
-# Update the contig names and sort the contigs in the FASTA
-fgbio UpdateFastaContigNames \
-   -i GCF_000001405.40_GRCh38.p14_genomic.fna \
-   -d GCF_000001405.40_GRCh38.p14_assembly_report.dict \
-   -o GRCh38.p14.fasta \
-   --sort-by-dict \
-   --skip-missing
-
-# Build the final fasta and index it
-cat GRCh38.p14.fasta attB.fasta attP.fasta PL312.fasta | seqkit seq -w 60 - > GRCh38.p14.full.fasta
-samtools faidx GRCh38.p14.full.fasta
-samtools dict GRCh38.p14.full.fasta > GRCh38.p14.full.dict
-bwa index GRCh38.p14.full.fasta
+bash scripts/build_reference.sh \
+  [-i <reference folder URI> | -g <genome_name>] \
+  [-n <reference name>] \
+  [-D <root dir> | -G <genomes_dir> -R <references_dir>] \
+  [-A] \
+  attB.fasta attP.fasta plasmid.fasta
 ```
 
-### Execution
+where:
+
+* `-i` specifies the folder from which the genome files can be downloaded. Right now, this is assumed to be an NCBI URI, and defaults to https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14. The folder must contain a `<name>_genomic.fna.gz` file with the genome sequence, and a `<name>_assembly_report.txt` file with the contig names, where `<name>` is the folder name (e.g. `GCF_000001405.40_GRCh38.p14` in the default URI).
+* `-g` specifies the genome name. Use this instead of `-i` if the genome files already exist in the genomes folder. Alternatively, the script will try to infer the NCBI URI from the genome name.
+* `-n` specifies the name of the reference to create. This defaults to the genome name.
+* `-D` specifies a root directory where both genomes and references will be stored, in the `<root>/genomes/` and `<root>/references` directories, respectively. This defaults to the system temp dir and is not required if you specify both `-G` and `-R`.
+* `-G` specifies the directory where genomes are downloaded.
+* `-R` specifies the directory where references are created.
+* `-A` specifies that alt contigs should not be included in the final reference.
+
+All the files for a reference are created in a directory with the reference name, and with all files prefixed with the reference name. For example, with reference name `GRCh38.p14_PL2312`, the reference directory will contain:
+
+* GRCh38.p14_PL2312.dict
+* GRCh38.p14_PL2312.gtf
+* GRCh38.p14_PL2312.fasta.gz
+* GRCh38.p14_PL2312.fasta.gz.amb
+* GRCh38.p14_PL2312.fasta.gz.ann
+* GRCh38.p14_PL2312.fasta.gz.bwt
+* GRCh38.p14_PL2312.fasta.gz.fai
+* GRCh38.p14_PL2312.fasta.gz.gzi
+* GRCh38.p14_PL2312.fasta.gz.pac
+
+### Execution (Nextflow)
+
+The Cryptic-seq pipeline has been ported to Nextflow, and this is now the preferred method of execution. For the other pipelines, use [Snakemake](#execution-snakemake). For regression testing, the Nextflow workflow can run a wrapped version of the original Snakemake workflow using the `-profile snakemake` option.
+
+#### Building Docker images
+
+Each process uses a single Docker image, but multiple processes can use the same image. Each environment configuration file in [mamba/](mamba/) corresponds to a Docker image. To build all the Docker images, run:
+
+```console
+bash scripts/docker.sh [-m] [-v VERSION] 
+```
+
+The `-m` option builds images that are compatible with an ARM Mac. The `-v` option specifies the version with which to tag the images, and must match the `docker_image_version` parameter in [nextflow.config](nextflow.config).
+
+To build a specific image, run the following command, where `<target>` is the name of the environment configuration file without the `.yml` extension.
+
+```console
+bash scripts/docker.sh [-m] [-v VERSION] <target>
+```
+
+To be able to run the Snakemake version of the workflow, you'll need to build a single "monolithic" Docker image instead. Run the following from the root directory of the project:
+
+```
+docker build \
+  -f docker/Dockerfile.snakemake \
+  -t tomebio/cryptic-seq:1.0 .
+```
+
+On an ARM-based Mac, some additional options are required:
+
+```
+docker build \
+  -f docker/Dockerfile.snakemake \
+  -t tomebio/cryptic-seq:1.0 \
+  --platform linux/amd64 \
+  --load .
+```
+
+#### Setting secrets
+
+If you plan to use CTB IDs to fetch metadata from benchling, then you must configure secrets for the Benchling Warehouse credentials:
+
+```console
+nextflow secrets set WAREHOUSE_USERNAME "username"
+nextflow secrets set WAREHOUSE_PASSWORD "password"
+```
+
+Note: there is a [bug](https://github.com/nextflow-io/nextflow/issues/4977) in Nextflow that prevents being able to use secrets that contain the `$` character.
+
+#### Running the workflow
+
+```
+nextflow run \
+  src/nextflow/cryptic-seq \
+  [--metasheet <metasheet.[xlsx|txt]> | --ctb_id <ctb_id>] \
+  --references_json <references.json> \
+  --reference_dir <ref_dir> \
+  --annotation_reference <name_or_path> \
+  --fastq_dir <fastq_dir> \
+  [--fastq_name_pattern <pattern>] \
+  [--output_dir <output_dir> ] \
+  [--prefix <output_prefix>] \
+  [-with-report report.html] \
+  # this option configures the pipeline for running locally
+  -profile local \
+  # this option only required on ARM Mac
+  [-profile rosetta] \
+  # this option only required on linux systems where it is required to run docker as root
+  [-profile linux]  
+  # this option causes the snakemake workflow to be run
+  [-profile snakemake] \
+  # this option provides the global config when running the snakemake workflow
+  [--global_config <config_yml> ]
+```
+
+The most common options are:
+
+* `--metasheet` specifies the sample sheet. Alternatively, `--ctb_id` can be used to specify a CTB ID in benchling from which to create the metasheet. This may require specifying `--genomes_json`, which is a mapping between species and reference name.
+* `--references_json` specifies a file that contains mappings between genome build and path to the folder that contains the reference (FASTA file and BWA index).
+* `--reference_dir` specifies the root folder that contains references. This is only necessary if `--references_json` contains relative paths.
+* `--annotation_reference` the name of, or path to, the reference to use in the `annotate_sites` step when searching for exact site sequence hits in the genome.
+* `--fastq_dir` is the root directory where FASTQ files live. The FASTQ file names may be specified in the metasheet `fq1` and `fq2` columns as relative paths under the `fastq_dir`, or the `--fastq_name_prefix` option may be specified with a glob expression that can contain placeholders for any of the columns in the metasheet, as well as the special `read` placeholder which has a value of `1` for read 1 files and `2` for read 2 files, e.g. `**/{sample_name}*/*_R{read}_*.gz`.
+* `--output_dir` is the directory where pipeline outputs will be published. It defaults to the directory where the workflow is launched.
+* `--output_prefix` is the name of the subdirectory within `output_dir` where pipeline outputs will be published, and is also used to name the run-level outputs. It defaults to the name of the `metasheet` (without extension).
+
+To see the full list of options that can be set, run:
+
+```console
+nextflow run src/nextflow/cryptic-seq -h
+```
+
+Note that the options that are specific to the nextflow command only start with one dash (e.g., `-with-report`) while options that override workflow parameters start with two dashes (e.g. `--metasheet`).
+
+Instead of (or in addition to) setting options on the command line, you can also put them in a configuration file. Options specified on the command line override those in config files.
+
+`example.config`
+```
+metasheet = "my_samples.txt"
+references_json = "my_references.json"
+trim_Tn5 = true
+```
+
+```console
+nextflow run \
+  src/nextflow/cryptic-seq \
+  -c example.config \
+  --fastq_dir my_fastq_dir
+  --output_dir my_output_dir
+  -profile local
+```
+
+### Execution (Snakemake)
 
 Execute the following command to run the pipeline. `pipeline` is the name of one of the pipelines in the `src/snakemake` folder. Note that the `-d` argument is only required if you are executing the script from somewhere other than the root folder of the `tbChaSIn` project.
 
 ```console
-bash src/scripts/run_snakemake.sh \
+bash scripts/run_snakemake.sh \
     [-d /path/to/snakemake/dir] \
     -p <pipeline> \
     -c /path/to/config.yml \
@@ -350,6 +501,7 @@ The global parameters supported for Cryptic-seq are listed in the following tabl
 | trim_Tn5                | Whether to trim the Tn5 mosiac end sequence from the start of R1                                            | `True` |
 | trim_Tn5_max_mismatches | Maximum number of mismatches to allow Tn5 trimming                                                          | 1  |
 | trim_att_max_mismatches | Maximum number of mismatches to allow leading attachment site trimming                                      | 4  |
+| umi_from_read_name | Set to `True` if the UMI is found in the read name instead of the sequence        | `False`  |
 
 ##### Durant et al.
 
@@ -462,52 +614,49 @@ settings:
 
 *** Important ***: `ref_fasta` is the genome _with_ attD, while `genome_fasta` _does not_ contain attD.
 
-#### Nextflow
+### Development
 
-These pipelines are in the process of being ported to Nextflow. The first step is to wrap the Snakemake pipeline using [snk][snk-link] inside a Docker container and call it from a Nextflow process. There is an initial step that creates the configuration file for the Snakemake workflow from a metasheet.
+#### Python toolkit
 
-To build the Docker container:
+All custom scripts used by these workflows are written in python and available as a command line toolkit called `pytomebio`. To add a new tool:
 
+* Create a `<tool>.py` file in the appropriate package within `pytomebio.tools`
+* Add the tool to the `TOOLS` dict in `pytomebio.__main__.py`
+* Add any new dependencies to `pyproject.toml`
+
+#### Converting Snakemake to Nextflow
+
+We follow a two-step process:
+
+1. Wrap the Snakemake pipeline using [snk][snk-link] inside a Docker container and call it from a Nextflow process.
+2. Convert each Snakemake rule to a corresponding Nextflow process and write a "native" Nextflow workflow.
+
+The workflow then has the option of running either the "native" version or the Snakemake version. This is useful to be able to compare the results for regression testing.
+
+##### Adding a process
+
+To add a new step to the workflow, create a new `process` in the appropriate `main.nf` file in one of the subfolders of `src/nextflow`. The process should have the following directives:
+
+* `label` corresponding to the Docker image that should be used
+* `tag "${meta.id}"` for processes that run on individual samples
+* `label 'global'` for processes that run on the aggregated results
+* `ext resource: value` to specify resource requirements that are above the base level of 1 CPU, 2 GB memory, and 100 GB of disk space
+
+Each process needs to have an associated Docker image. You can use one of the existing images by giving your process the associated `label` directive. If you need to create a new image:
+
+* Create a new Mamba configuration file in [mamba/](mamba/)
+* Create a new target in [Dockerfile](Dockerfile)
+* Add the necessary configuration for the new image in `src/nextflow/<workflow>/nextflow.config`
+
+#### Integration tests
+
+From `src/nextflow/cryptic-seq` run:
+
+```console
+REF_DIR=<ref_dir> PROFILES=local,test[,rosetta|linux] pytest --git-aware tests/integration/
 ```
-docker build -t tomebio/cryptic-seq:1.0 .
-```
 
-On an ARM-based Mac, some additional options are required:
-
-```
-docker build \
-  --platform linux/amd64 \
-  --load \
-  -t tomebio/cryptic-seq:1.0 .
-```
-
-To run the workflow:
-
-```
-nextflow run \
-  src/nextflow/cryptic-seq \
-  --metasheet <metasheet.[xlsx|txt]> \
-  --genomes_json <genomes.json> \
-  --references_json <references.json> \
-  --fastq_dir <fastq_dir> \
-  [--output_dir <output_dir> ] \
-  [--prefix <output_prefix>] \
-  [-with-report report.html] \
-  # this option only required on ARM Mac
-  [-profile rosetta] \
-  # this option only required on linux systems where it is required to run docker as root
-  [-profile linux]  
-```
-
-The `genomes.json` file contains mappings between species name and genome build.
-
-The `references.json` file contains mappings between genome build and path to the folder that contains the reference (FASTA file and BWA index).
-
-The `fastq_dir` is the root directory where FASTQ files live. The FASTQ file names may be specified in the metasheet `fq1` and `fq2` columns as relative paths under the `fastq_dir`, or the `--fastq_name_prefix` option may be specified with a glob expression that can contain placeholders for any of the columns in the metasheet, as well as the special `read` placeholder which has a value of `1` for read 1 files and `2` for read 2 files, e.g. `**/{sample_name}*/*_R{read}_*.gz`.
-
-The `output_dir` is the directory where pipeline outputs will be published. It defaults to the directory where the workflow is launched.
-
-The `output_prefix` is the name of the subdirectory within `output_dir` where pipeline outputs will be published, and is also used to name the run-level outputs. It defaults to the name of the `metasheet` (without extension).
+where `ref_dir` is the root directory for references.
 
 [poetry-link]: https://python-poetry.org/docs/#installation
 [mamba-link]: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html

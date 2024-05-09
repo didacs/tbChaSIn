@@ -1,5 +1,5 @@
-ngs_tracking_id	integrase	group	sample_name	library	replicate	benchling_pl_id	reference	species	genome_build
-TB000232b	PhiC31	attB_NN	attB_NN_rep1_S3	N7	1	FRAG452	GRCh38.p14	human	GRCh38/hg38
-TB000232b	PhiC31	attB_NN	attB_NN_rep2_S5	N7	2	FRAG452	GRCh38.p14	human	GRCh38/hg38
-TB000232b	PhiC31	attB_NN	attB_NN_rep3_S9	N7	3	FRAG452	GRCh38.p14	human	GRCh38/hg38
-TB000232b	PhiC31	attP_NN	attP_NN_rep3_S7	N7	3	FRAG454	GRCh37	human	GRCh37/hg37
+ngs_tracking_id	integrase	group	sample_name	library	replicate	benchling_pl_id	species	genome_build	reference
+TB000232b	PhiC31	attB_NN	attB_NN_rep1_S3	N7	1	FRAG452	human	GRCh38/hg38	GRCh38.p14
+TB000232b	PhiC31	attB_NN	attB_NN_rep2_S5	N7	2	FRAG452	human	GRCh38/hg38	GRCh38.p14
+TB000232b	PhiC31	attB_NN	attB_NN_rep3_S9	N7	3	FRAG452	human	GRCh38/hg38	GRCh38.p14
+TB000232b	PhiC31	attP_NN	attP_NN_rep3_S7	N7	3	FRAG454	human	GRCh37/hg37	hg19

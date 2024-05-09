@@ -20,6 +20,6 @@ def attachment_sites() -> Dict[str, str]:
 @pytest.fixture
 def references() -> Dict[str, str]:
     return {
-        "GRCh38/hg38": "GRCh38.p14",
-        "GRCh37/hg37": "foo/bar/GRCh37/",
+        "GRCh38/hg38": "GRCh38/GRCh38.p14/GRCh38.p14.fasta.gz",
+        "GRCh37/hg37": "foo/bar/GRCh37/hg19/",
     }

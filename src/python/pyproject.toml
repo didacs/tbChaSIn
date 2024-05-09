@@ -4,7 +4,6 @@ version = "0.0.1"
 description = "Tools and APIs for off-target detection assays"
 authors = ["Fulcrum Genomics <no-reply@fulcrumgenomics.com>"]
 maintainers = ["Fulcrum Genomics <no-reply@fulcrumgenomics.com>"]
-readme = "README.md"
 repository = "https://github.com/tomebio/tbChaSIn"
 classifiers=[
     "Environment :: Console",
@@ -13,11 +12,25 @@ classifiers=[
     "Intended Audience :: Developers",
 ]
 packages = [
-    { include = "pytomebio", from = "src/python" }
+    { include = "pytomebio", from = "." }
 ]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+biopython = "^1.83"
+defopt = "^6.4.0"
+fgpyo = "^0.2.0"
+openpyxl = "^3.1.2"
+pandas = "^2.2.1"
+psycopg = { version = "^3.1.18", extras = ["binary","pool"] }
+pybedtools="^0.10.0"
+pysam = "^0.22.0"
+pyyaml = "^6.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest="^8.0.0"
+pytest-postgresql="^6.0.0"
+types-pyyaml="^6.0.12.12"
 
 [tool.poetry.scripts]
 tomebio-tools = "pytomebio.tools.__main__:main"

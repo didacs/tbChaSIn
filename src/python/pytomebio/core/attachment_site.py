@@ -47,8 +47,8 @@ class AttachmentSite:
         right = right.upper()
         overhang = overhang.upper()
         assert all(
-            base in cls.DNA_BASES for base in (left + overhang + right)
-        ), "Attachment site has illegal bases"
+            base in cls.DNA_BASES for seq in (left, overhang, right) for base in seq
+        ), f"Attachment site {left + overhang + right} has illegal bases"
 
         return AttachmentSite(
             name=name,

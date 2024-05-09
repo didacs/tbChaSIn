@@ -1,0 +1,10 @@
+name: tools
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.18
+  - bedtools=2.31.1
+  - bwa=0.7.17
+  - samtools=1.19.2

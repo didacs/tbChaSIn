@@ -22,7 +22,9 @@ EOF
     exit 1
 }
 
-base_dir="$(pwd)/src/snakemake"
+parent=$(cd "$(dirname "$0")" && pwd -P)
+repo_root="$(dirname "${parent}")"
+base_dir="${repo_root}/src/snakemake"
 dry_run=""
 tmp_dir=""
 extra_args=""
@@ -58,7 +60,7 @@ if [ -n "${config_file}" ]; then
 fi
 
 # shellcheck disable=SC1091
-source "$(dirname "$0")"/common.sh
+source "${repo_root}/scripts/common.sh"
 cores=$(find_core_limit)
 mem_gb=$(find_mem_limit_gb)
 log "Number of cores: $cores"

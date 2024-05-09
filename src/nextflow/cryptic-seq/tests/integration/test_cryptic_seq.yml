@@ -1,0 +1,20 @@
+- name: basic
+  command: bash -c 'nextflow run main.nf --references_dir $REF_DIR -profile ${PROFILES},test'
+  files:
+  - path: "test-output/S1-350/find_sites/S1-350.sites.txt"
+    contains:
+    - "chr1\t1361842"
+  - path: "test-output/collate_sites/sites.per_sample.txt"
+    contains:
+    - "458"
+- name: umi
+  command: bash -c 'nextflow run main.nf --references_dir $REF_DIR -profile ${PROFILES},test,umi_test'
+  files:
+  - path: "test-output/NC/copy_umi_from_read_name/NC.umi_from_read_name.bam"
+  - path: "test-output/NC/copy_umi_from_read_name/NC.umi_from_read_name.bai"
+  - path: "test-output/NC/find_sites/NC.sites.txt"
+    contains:
+    - "chr1\t10939035"
+  - path: "test-output/collate_sites/sites.per_sample.txt"
+    contains:
+    - "46"

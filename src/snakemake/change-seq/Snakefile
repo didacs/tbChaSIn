@@ -8,7 +8,6 @@ from typing import List
 from typing import Optional
 
 from pytomebio.pipeline import snakemake_utils
-from pytomebio.pipeline.samples import from_path
 from pytomebio.pipeline.samples import Sample
 import os
 import copy
@@ -20,7 +19,7 @@ from attrs import define
 ################################################################################
 
 yml: Path = Path(config["config_yml"])
-sample_dict: Dict[str, Sample] = from_path(yml=yml)
+sample_dict: Dict[str, Sample] = Sample.from_yml(path=yml)
 samples: List[Sample] = list(sample_dict.values())
 
 ################################################################################

@@ -172,7 +172,7 @@ def create_metasheet_from_benchling(
             otherwise the default SSL mode.
         genomes_json: A JSON file containing a mapping of species to genome build.
         default_genome: The default genome build to use if no genome is found for a given species.
-        output_file: The path to the metasheet file to write.
+        output_file: The path to the metasheet text file to write.
     """
     genomes: Dict[str, str] = {}
     if genomes_json is not None:

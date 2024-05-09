@@ -1,0 +1,30 @@
+name: dev
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  # Python
+  - python=3.9.18
+  - pip=24.0
+  - ruff=0.2.1
+  - mypy=1.8.0
+  # Nextflow
+  - nextflow=23.10.1
+  - pytest>=8.0.0
+  - pytest-workflow=2.1.0
+  # Snakemake
+  - snakemake-minimal=7.32.4
+  - git=2.40.1 # required by snk
+  - GitPython=3.1.31 # fix at version required by snk
+  - snakefmt=0.10.0
+  - pip:
+    - snk==0.23.0
+  # Reference Preparation
+  - bedtools=2.31.1
+  - bwa=0.7.17
+  - fgbio-minimal=2.2.1
+  - samtools=1.19.2
+  - seqkit=2.7.0
+  # Other
+  - shellcheck=0.9.0

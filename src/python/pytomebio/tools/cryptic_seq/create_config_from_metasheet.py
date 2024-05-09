@@ -18,7 +18,7 @@ DEFAULT_FASTQ_NAME_PATTERN = "**/{sample_name}*/*_R{read}_*.gz"
 
 def _add_ref_fasta(row: pd.Series, *, ref_dir: Path) -> pd.Series:
     reference = row["reference"]
-    row["ref_fasta"] = str(ref_dir / reference / f"{reference}.fasta")
+    row["ref_fasta"] = str(ref_dir / reference / f"{reference}.fasta.gz")
     return row
 
 
