@@ -237,7 +237,7 @@ def resolve_references(
     if output_metasheet is not None:
         sample_df.to_csv(output_metasheet or sys.stdout, sep="\t", index=False)
 
-    with open(output_references or "resoved_references.json", "w") as fd:
+    with open(output_references or "resolved_references.json", "w") as fd:
         json.dump(resolved_references, fd, indent=2)
 
     with open(output_annotation or "annotation_reference.txt", "w") as fd:

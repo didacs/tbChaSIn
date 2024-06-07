@@ -209,7 +209,7 @@ fi
 gtf_file="${gtf_unzipped}"
 
 # The fasta file needs to be indexed
-if [ -f "${genome_file}.fai" ]; then
+if [ -f "${genome_file}.fai" ] && [ ! "${genome_file}.fai" -ot "${genome_file}" ]; then
   echo "FASTA index already exists"
 else
   samtools faidx "${genome_file}"
