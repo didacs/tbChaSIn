@@ -199,12 +199,17 @@ class SitesGenerator(ABC):
                     continue
                 if read1.mapping_quality < min_mapq or read2.mapping_quality < min_mapq:
                     continue
-                if not use_duplicates and (read1.is_duplicate or read2.is_duplicate):
-                    continue
 
                 # get the position of the first base _sequenced_
                 key = self.get_key(template)
                 if key is None:
+                    continue
+
+                if (
+                    not use_duplicates
+                    and key in raw_sites
+                    and (read1.is_duplicate or read2.is_duplicate)
+                ):
                     continue
 
                 # add the key if not present
