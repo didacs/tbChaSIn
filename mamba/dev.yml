@@ -10,7 +10,7 @@ dependencies:
   - ruff=0.2.1
   - mypy=1.8.0
   # Nextflow
-  - nextflow=23.10.1
+  - nextflow=24.04.2
   - pytest>=8.0.0
   - pytest-workflow=2.1.0
   # Snakemake
