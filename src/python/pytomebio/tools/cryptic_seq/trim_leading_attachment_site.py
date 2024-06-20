@@ -139,19 +139,14 @@ def trim_leading_attachment_site(
                 )
 
             num_mismatches_counter[best_num_mismatches] += 1
-            if best_num_mismatches <= max_mismatches:
-                if not aligns_to_full_site:
-                    template.r1.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, "None")
-                    template.r1.set_tag(
-                        AttachmentSiteMatch.MATE_MATCH_TAG, best_match.to_sam_tag()
-                    )
-                    template.r2.set_tag(
-                        AttachmentSiteMatch.READ_MATCH_TAG, best_match.to_sam_tag()
-                    )
-                    template.r2.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, "None")
-                    r2_quals = template.r2.query_qualities
-                    template.r2.query_sequence = r2_bases[best_match.alignment_length :]
-                    template.r2.query_qualities = r2_quals[best_match.alignment_length :]
+            if not aligns_to_full_site and best_num_mismatches <= max_mismatches:
+                template.r1.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, "None")
+                template.r1.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, best_match.to_sam_tag())
+                template.r2.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, best_match.to_sam_tag())
+                template.r2.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, "None")
+                r2_quals = template.r2.query_qualities
+                template.r2.query_sequence = r2_bases[best_match.alignment_length :]
+                template.r2.query_qualities = r2_quals[best_match.alignment_length :]
                 for rec in template.all_recs():
                     keep_writer.write(rec)
             else:

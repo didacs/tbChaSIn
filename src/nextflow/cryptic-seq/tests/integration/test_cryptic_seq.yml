@@ -6,7 +6,7 @@
     - "chr1\t1361842"
   - path: "test-output/collate_sites/sites.per_sample.txt"
     contains:
-    - "458"
+    - "460"
 - name: umi
   command: bash -c 'nextflow run main.nf --references_dir $REF_DIR -profile ${PROFILES},test,umi_test'
   files:

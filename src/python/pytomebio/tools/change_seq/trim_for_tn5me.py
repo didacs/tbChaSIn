@@ -11,6 +11,7 @@ from fgpyo.util.metric import Metric
 from pysam import AlignmentFile
 
 from pytomebio.core.aligner import get_glocal_aligner
+from pytomebio.tools.common import TN5_ME
 
 
 @frozen
@@ -56,7 +57,7 @@ def trim_for_tn5me(
     out_bam: Path,
     out_metrics: Path,
     circularization_palindrome: str = "ACGT",
-    tn5_mosaic_end: str = "AGATGTGTATAAGAGACAG",
+    tn5_mosaic_end: str = TN5_ME,
     min_score: int = 19,
     is_circularized: bool = True,
 ) -> Dict[int, ScoreCountsMetric]:

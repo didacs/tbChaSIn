@@ -12,8 +12,9 @@ from fgpyo.sam import Template
 from fgpyo.sam.builder import SamBuilder
 from pysam import AlignmentFile
 
-from pytomebio.tools.cryptic_seq.trim_for_tn5me import Tn5ReadOneMatchingMetric
-from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me
+from pytomebio.tools.common import TN5_ME
+from pytomebio.tools.cryptic_seq.trim_r1_tn5me import Tn5ReadOneMatchingMetric
+from pytomebio.tools.cryptic_seq.trim_r1_tn5me import trim_r1_tn5me
 
 
 @frozen
@@ -212,7 +213,7 @@ class TrimForTn5meTestBuilder:
 
 def test_trim_for_tn5me(
     tmp_path: Path,
-    tn5_mosaic_end: str = "AGATGTGTATAAGAGACAG",
+    tn5_mosaic_end: str = TN5_ME,
     max_mismatches: int = 1,
 ) -> None:
     test_builder = TrimForTn5meTestBuilder.from_test_cases(
@@ -310,7 +311,7 @@ def test_trim_for_tn5me(
         ],
     )
 
-    actual_mismatch_metrics = trim_for_tn5me(
+    actual_mismatch_metrics = trim_r1_tn5me(
         in_bam=test_builder.in_bam,
         keep_bam=test_builder.keep_bam,
         reject_bam=test_builder.reject_bam,

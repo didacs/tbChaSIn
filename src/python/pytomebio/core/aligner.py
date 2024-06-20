@@ -38,3 +38,15 @@ def get_query_prefix_aligner() -> Align.PairwiseAligner:
     aligner.query_right_open_gap_score = 0
     aligner.query_right_extend_gap_score = 0
     return aligner
+
+
+def get_end_adapter_aligner() -> Align.PairwiseAligner:
+    """Aligner for aligning part or all of an adapter (query) to the end of the target. The query
+    may occur anywhere in the target.
+    """
+    aligner = get_global_aligner()
+    aligner.query_end_open_gap_score = 0
+    aligner.query_end_extend_gap_score = 0
+    aligner.target_right_open_gap_score = 0
+    aligner.target_right_extend_gap_score = 0
+    return aligner

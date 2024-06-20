@@ -89,7 +89,7 @@ process trim_r1_tn5me {
         reject_bam = "${meta.id}.cryptic_seq.trim_for_tn5me.reject.bam"
         metric_tsv = "${meta.id}.cryptic_seq.trim_for_tn5me.metrics.tsv"
         """
-        tomebio-tools cryptic-seq trim-for-tn5me \
+        tomebio-tools cryptic-seq trim-r1-tn5me \
             --in-bam "${bam}" \
             --keep-bam "${keep_bam}" \
             --reject-bam "${reject_bam}" \
@@ -127,7 +127,6 @@ process trim_leading_attachment_site {
 }
 
 // Trims the end of R2s for the Tn5 mosaic end.
-// TODO: output files should be named `cryptic_seq` rather than `change_seq`
 process trim_r2_tn5me {
     label 'tools'
     tag "${meta.id}"
@@ -136,19 +135,77 @@ process trim_r2_tn5me {
         tuple val(meta), path(bam)
     
     output:
-        tuple val(meta), path(out_bam), emit: out_bam
+        tuple val(meta), path(keep_bam), emit: keep_bam
+        tuple val(meta), path(reject_bam), emit: reject_bam
         path metric_tsv, emit: metric_tsv
     
     script:
-        out_bam = "${meta.id}.change_seq.trim_for_tn5me.bam"
-        metric_tsv = "${meta.id}.change_seq.trim_for_tn5me.metrics.tsv"
+        keep_bam = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.keep.bam"
+        reject_bam = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.reject.bam"
+        metric_tsv = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.metrics.tsv"
+        def min_score_opt = ""
+        if (params.trim_Tn5_r2_min_score != null) {
+            min_score_opt = "--min-score ${params.trim_Tn5_r2_min_score}"
+        }
+        def min_match_length_opt = ""
+        if (params.trim_Tn5_r2_min_match_length) {
+            min_match_length_opt = "--min-match-length ${params.trim_Tn5_r2_min_match_length}"
+        }
+        def min_keep_length_opt = ""
+        if (params.trim_Tn5_r2_min_keep_length) {
+            min_keep_length_opt = "--min-keep-length ${params.trim_Tn5_r2_min_keep_length}"
+        }
         """
-        tomebio-tools change-seq trim-for-tn5me \
+        tomebio-tools cryptic-seq trim-r2 \
             --in-bam "${bam}" \
-            --out-bam "${out_bam}" \
+            --keep-bam "${keep_bam}" \
+            --reject-bam "${reject_bam}" \
             --out-metrics "${metric_tsv}" \
-            --min-score ${params.trim_Tn5_r2_min_score} \
-            --no-is-circularized
+            ${min_score_opt} \
+            ${min_match_length_opt} \
+            ${min_keep_length_opt}
+        """
+}
+
+// Trims the end of R2s for the Tn5 mosaic end.
+process trim_r2_adapter {
+    label 'tools'
+    tag "${meta.id}"
+
+    input:
+        tuple val(meta), path(bam)
+    
+    output:
+        tuple val(meta), path(keep_bam), emit: keep_bam
+        tuple val(meta), path(reject_bam), emit: reject_bam
+        path metric_tsv, emit: metric_tsv
+    
+    script:
+        keep_bam = "${meta.id}.cryptic_seq.trim_r2_for_adapter.keep.bam"
+        reject_bam = "${meta.id}.cryptic_seq.trim_r2_for_adapter.reject.bam"
+        metric_tsv = "${meta.id}.cryptic_seq.trim_r2_for_adapter.metrics.tsv"
+        def min_score_opt = ""
+        if (params.trim_adapter_r2_min_score != null) {
+            min_score_opt = "--min-score ${params.trim_adapter_r2_min_score}"
+        }
+        def min_match_length_opt = ""
+        if (params.trim_adapter_r2_min_match_length) {
+            min_match_length_opt = "--min-match-length ${params.trim_adapater_r2_min_match_length}"
+        }
+        def min_keep_length_opt = ""
+        if (params.trim_adapter_r2_min_keep_length) {
+            min_keep_length_opt = "--min-keep-length ${params.trim_adapter_r2_min_keep_length}"
+        }
+        """
+        tomebio-tools cryptic-seq trim-r2 \
+            --in-bam "${bam}" \
+            --keep-bam "${keep_bam}" \
+            --reject-bam "${reject_bam}" \
+            --out-metrics "${metric_tsv}" \
+            --sequence ${params.trim_adapter_r2} \
+            ${min_score_opt} \
+            ${min_match_length_opt} \
+            ${min_keep_length_opt}
         """
 }
 
@@ -558,15 +615,24 @@ workflow cryptic_seq {
 
     if (params.trim_Tn5) {
         trim_r1_tn5me(fastq_to_ubam.out.ubam)
-        trim_bam = trim_r1_tn5me.out.keep_bam
+        trim_bam_r1 = trim_r1_tn5me.out.keep_bam
     } else {
-        trim_bam = fastq_to_ubam.out.ubam
+        trim_bam_r1 = fastq_to_ubam.out.ubam
     }
 
-    trim_leading_attachment_site(trim_bam)
-    trim_r2_tn5me(trim_leading_attachment_site.out.keep_bam)
+    trim_leading_attachment_site(trim_bam_r1)
+
+    if (params.trim_Tn5_r2) {
+        trim_r2_tn5me(trim_leading_attachment_site.out.keep_bam)
+        trim_bam_r2 = trim_r2_tn5me.out.keep_bam
+    } else if (params.trim_adapter_r2 != null) {
+        trim_r2_adapter(trim_leading_attachment_site.out.keep_bam)
+        trim_bam_r2 = trim_r2_adapter.out.keep_bam
+    } else {
+        trim_bam_r2 = trim_leading_attachment_site.out.keep_bam
+    }
     
-    align_input = trim_r2_tn5me.out.out_bam.map { meta, bam ->
+    align_input = trim_bam_r2.map { meta, bam ->
         tuple(meta, bam, meta.referenceDir, meta.referenceFastaName)
     }
     align(align_input)

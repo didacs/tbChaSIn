@@ -10,6 +10,8 @@ from fgpyo.sam import Template
 from fgpyo.util.metric import Metric
 from pysam import AlignmentFile
 
+from pytomebio.tools.common import TN5_ME
+
 
 def _num_mismatches(s1: str, s2: str) -> int:
     """Returns the number of mismatches between two sequences"""
@@ -73,13 +75,13 @@ class Tn5ReadOneMatchingMetric(Metric["Tn5ReadOneMatchingMetric"]):
         return metrics
 
 
-def trim_for_tn5me(
+def trim_r1_tn5me(
     *,
     in_bam: Path,
     keep_bam: Path,
     reject_bam: Path,
     out_metrics: Path,
-    tn5_mosaic_end: str = "AGATGTGTATAAGAGACAG",
+    tn5_mosaic_end: str = TN5_ME,
     max_mismatches: int = 1,
 ) -> Dict[int, Tn5ReadOneMatchingMetric]:
     """Finds the Tn5 mosaic end at the start of R1 and trims it.

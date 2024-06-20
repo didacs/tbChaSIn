@@ -1,5 +1,4 @@
 """Main entry point for all PYTOMEBIO tools."""
-
 import logging
 import sys
 from typing import Callable
@@ -25,10 +24,11 @@ from pytomebio.tools.cryptic_seq.find_sites import find_sites as cryptic_seq_fin
 from pytomebio.tools.cryptic_seq.resolve_references import (
     resolve_references as cryptic_seq_resolve_references,
 )
-from pytomebio.tools.cryptic_seq.trim_for_tn5me import trim_for_tn5me as cryptic_seq_trim_for_tn5me
 from pytomebio.tools.cryptic_seq.trim_leading_attachment_site import (
     trim_leading_attachment_site as cryptic_trim_leading_attachment_site,
 )
+from pytomebio.tools.cryptic_seq.trim_r1_tn5me import trim_r1_tn5me as cryptic_seq_trim_r1_tn5me
+from pytomebio.tools.cryptic_seq.trim_r2 import trim_r2 as cryptic_seq_trim_r2
 from pytomebio.tools.durant.filter_reads import filter_reads as durant_filter_reads
 from pytomebio.tools.durant.find_sites import find_sites as durant_find_sites
 from pytomebio.tools.durant.trim_leading_r2 import trim_leading_r2 as durant_trim_leading_r2
@@ -45,7 +45,8 @@ TOOLS: Dict[str, List[Callable]] = {
         cryptic_seq_create_config_from_metasheet,
         cryptic_seq_find_sites,
         cryptic_seq_resolve_references,
-        cryptic_seq_trim_for_tn5me,
+        cryptic_seq_trim_r1_tn5me,
+        cryptic_seq_trim_r2,
         cryptic_trim_leading_attachment_site,
         cryptic_seq_annotate_sites,
     ],
