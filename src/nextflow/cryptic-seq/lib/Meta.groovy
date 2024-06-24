@@ -105,8 +105,11 @@ class Meta extends Nextflow{
                 attachmentSites = values[ATTACHMENT_SITES].split(';')
             } else if (values.containsKey(ATTACHMENT_SITE_ID)) {
                 attachmentSites = values[ATTACHMENT_SITE_ID]
-                    .split(';')
-                    .collect { attachmentSiteById[it] }
+                    .split(/[;,]/) // Split by either ',' or ';'
+                    .collect { attachmentSiteById[it.trim()] } // Trim blank spaces
+                if (attachmentSites.any { it == null }) {
+                    throw new RuntimeException("Null attachment site found ${attachmentSites}")
+                }
             }
             if (!attachmentSites) {
                 if (defaultAttachmentSites) {
