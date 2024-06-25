@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TODO: add support for curl as an alternative to wget
 
-set -exo pipefail
+set -eo pipefail
 
 usage() {
   cat <<EOF

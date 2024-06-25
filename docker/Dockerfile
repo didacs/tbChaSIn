@@ -63,9 +63,6 @@ FROM base as tools-base
 ADD --chown=$MAMBA_USER:$MAMBA_USER \
     https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     /home/$MAMBA_USER/.postgresql/root.crt
-# Set environment variables to require root CA verification by default and make these settings 
-# apply to new shells. Use .zshrc for ZSH.
-ENV PGSSLMODE="verify-ca"
 
 # Build tomebio-tools
 FROM tools-base as tools-build
@@ -103,6 +100,10 @@ RUN micromamba install -y -n base -f tools.yml \
     && micromamba clean --all --yes \
     && rm tools.yml
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
+# Require root CA verification by default
+ENV PGSSLMODE="verify-ca"
+# Set the location of the cert file explicitly, in case this container is run as root
+ENV WAREHOUSE_SSLROOTCERT="/home/$MAMBA_USER/.postgresql/root.crt"
 # Install pytomebio
 COPY --from=tools-build --chown=$MAMBA_USER:$MAMBA_USER /tbChaSIn/dist/*.whl .
 RUN pip install *.whl \

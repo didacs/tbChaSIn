@@ -17,11 +17,18 @@ ENV_WAREHOUSE_USERNAME = "WAREHOUSE_USERNAME"
 ENV_WAREHOUSE_PASSWORD = "WAREHOUSE_PASSWORD"
 ENV_WAREHOUSE_HOST = "WAREHOUSE_HOST"
 ENV_WAREHOUSE_PORT = "WAREHOUSE_PORT"
-DEFAULT_WAREHOUSE_PORT = 5432
 ENV_WAREHOUSE_DBNAME = "WAREHOUSE_DBNAME"
-DEFAULT_WAREHOUSE_DBNAME = "warehouse"
 ENV_WAREHOUSE_SSLMODE = "WAREHOUSE_SSLMODE"
-DEFAULT_WAREHOUSE_SSLMODE = "verify-ca"
+ENV_WAREHOUSE_SSLROOTCERT = "WAREHOUSE_SSLROOTCERT"
+
+SSLMODE_CA = "verify-ca"
+SSLMODE_FULL = "verify-full"
+SSLROOTCERT_SYSTEM = "system"
+
+DEFAULT_WAREHOUSE_HOST = "postgres-warehouse.tome.benchling.com"
+DEFAULT_WAREHOUSE_PORT = 5432
+DEFAULT_WAREHOUSE_DBNAME = "warehouse"
+DEFAULT_WAREHOUSE_SSLMODE = SSLMODE_CA
 
 # Queries the genomic_assays_metadata table on Benchling. Should return one row for each sample
 # with the specified ctb_id.
@@ -35,7 +42,7 @@ select
     ga.cell_type_or_clone,
     ga.species
 from genomic_assays_metadata$raw as ga
-where ga.archived$ = false and ga.ctb_id = '%(ctb_id)s'
+where ga.archived$ = false and ga.ctb_id = %(ctb_id)s
 """
 
 # Queries the custom_tracking table on Benchling. Should return one row for the specified ctb_id.
@@ -47,8 +54,16 @@ select
     ct.sequencing_run_id,
     ct.sequencing_project_name
 from custom_tracking$raw as ct
-where ct.archived$ = false and ct.file_registry_id$ = '%(ctb_id)s'
+where ct.archived$ = false and ct.file_registry_id$ = %(ctb_id)s
 """
+
+
+def get_default_sslrootcert() -> str:
+    user_root_crt = Path.home() / ".postgresql" / "root.crt"
+    if user_root_crt.exists():
+        return str(user_root_crt)
+    else:
+        return SSLROOTCERT_SYSTEM
 
 
 def warehouse_connect(
@@ -58,29 +73,37 @@ def warehouse_connect(
     port: Optional[int] = None,
     dbname: Optional[str] = None,
     sslmode: Optional[str] = None,
+    sslrootcert: Optional[str] = None,
 ) -> Connection:
     if username is None:
         username = os.getenv(ENV_WAREHOUSE_USERNAME)
     if password is None:
         password = os.getenv(ENV_WAREHOUSE_PASSWORD)
     if host is None:
-        host = os.getenv(ENV_WAREHOUSE_HOST)
-    if port is None and ENV_WAREHOUSE_PORT in os.environ:
-        port = int(os.getenv(ENV_WAREHOUSE_PORT))
+        host = os.getenv(ENV_WAREHOUSE_HOST, DEFAULT_WAREHOUSE_HOST)
     if port is None:
-        port = DEFAULT_WAREHOUSE_PORT
+        port = int(os.getenv(ENV_WAREHOUSE_PORT, DEFAULT_WAREHOUSE_PORT))
     if dbname is None:
-        dbname = os.getenv(ENV_WAREHOUSE_DBNAME) or DEFAULT_WAREHOUSE_DBNAME
+        dbname = os.getenv(ENV_WAREHOUSE_DBNAME, DEFAULT_WAREHOUSE_DBNAME)
 
-    if username is None or password is None or host is None:
-        raise ValueError(
-            "warehouse_username, warehouse_password, and warehouse_url must be specified"
-        )
+    if username is None or password is None:
+        raise ValueError("username and password must be specified")
 
     if sslmode is None:
-        sslmode = os.getenv(ENV_WAREHOUSE_SSLMODE) or DEFAULT_WAREHOUSE_SSLMODE
-    if sslmode not in ("verify-ca", "verify-full"):
+        sslmode = os.getenv(ENV_WAREHOUSE_SSLMODE, DEFAULT_WAREHOUSE_SSLMODE)
+    if sslmode not in (SSLMODE_CA, SSLMODE_FULL):
         LOG.warn(f"Accessing Benchling Warehouse using a discouraged SSL mode {sslmode}")
+
+    if sslrootcert is None:
+        sslrootcert = os.getenv(ENV_WAREHOUSE_SSLROOTCERT)
+    if sslrootcert is None:
+        sslrootcert = get_default_sslrootcert()
+
+    if sslrootcert == SSLROOTCERT_SYSTEM and sslmode == SSLMODE_CA:
+        raise ValueError(
+            f"cannot use sslmode={SSLMODE_CA} with sslrootcert={SSLROOTCERT_SYSTEM}; please set "
+            f"{ENV_WAREHOUSE_SSLROOTCERT} to point to a custom root certificate"
+        )
 
     return pg.connect(
         dbname=dbname,
@@ -89,6 +112,7 @@ def warehouse_connect(
         host=host,
         port=port,
         sslmode=sslmode,
+        sslrootcert=sslrootcert,
     )
 
 
@@ -120,13 +144,13 @@ def select_all(conn: Connection, query: str, **kwargs: Any) -> pd.DataFrame:
 def _add_genome(
     row: pd.Series, genomes: Dict[str, str], default_genome: Optional[str]
 ) -> pd.Series:
-    species = row["species"]
+    species = row["species"].lower()
     if species in genomes:
         row["genome_build"] = genomes[species]
     elif default_genome is not None:
         row["genome_build"] = default_genome
     else:
-        raise ValueError("No genome found for species {species}")
+        raise ValueError(f"No genome found for species {species}")
     return row
 
 
@@ -148,18 +172,22 @@ def create_metasheet(
 
 def create_metasheet_from_benchling(
     *,
-    ctb_id: str,
+    ctb_id: Optional[str] = None,
     warehouse_username: Optional[str] = None,
     warehouse_password: Optional[str] = None,
     warehouse_host: Optional[str] = None,
     warehouse_sslmode: Optional[str] = None,
+    warehouse_sslrootcert: Optional[str] = None,
     genomes_json: Optional[Path] = None,
     default_genome: Optional[str] = None,
     output_file: Optional[Path] = None,
+    test_connection: bool = False,
 ) -> None:
     """Creates a metasheet from Benchling metadata for a given CTB ID.
 
     Args:
+        ctb_id: The CTB ID of the sample to create a metasheet for. Required unless
+            '--test-connection' is specified.
         warehouse_username: The username to use when connecting to the Benchling warehouse. If
             not specified, then the environment variable `WAREHOUSE_USERNAME` will be used.
         warehouse_password: The password to use when connecting to the Benchling warehouse. If not
@@ -170,21 +198,33 @@ def create_metasheet_from_benchling(
         warehouse_sslmode: The SSL mode to use when connecting to the Benchling warehouse. If not
             specified, then the environment variable `WAREHOUSE_SSLMODE` will be used if it is set,
             otherwise the default SSL mode.
+        warehouse_sslrootcert: The path to the root SSL certificate to use when connecting to the
+            Benchling warehouse. If not specified, then the environment variable
+            `WAREHOUSE_SSLROOTCERT` will be used if it is set, otherwise system root cert is used.
         genomes_json: A JSON file containing a mapping of species to genome build.
         default_genome: The default genome build to use if no genome is found for a given species.
         output_file: The path to the metasheet text file to write.
+        test_connection: Tests the connection to the Benchling warehouse and then exits.
     """
-    genomes: Dict[str, str] = {}
-    if genomes_json is not None:
-        with open(genomes_json) as fd:
-            genomes = json.load(fd)
-
     conn = warehouse_connect(
         username=warehouse_username,
         password=warehouse_password,
         host=warehouse_host,
         sslmode=warehouse_sslmode,
+        sslrootcert=warehouse_sslrootcert,
     )
+
+    if test_connection:
+        try:
+            conn.cursor().execute("select 1")
+            sys.exit(0)
+        except Exception as e:
+            sys.exit(f"Error connecting to Benchling warehouse: {e}")
+
+    genomes: Dict[str, str] = {}
+    if genomes_json is not None:
+        with open(genomes_json) as fd:
+            genomes = dict((species.lower(), genome) for species, genome in json.load(fd).items())
 
     sample_df = create_metasheet(
         conn, ctb_id=ctb_id, genomes=genomes, default_genome=default_genome

@@ -9,7 +9,7 @@
 # can be overridden with the -n flag.
 ###############################################################################
 
-set -ex
+set -e
 
 usage() {
     cat <<EOF

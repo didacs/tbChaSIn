@@ -239,11 +239,15 @@ docker build \
 If you plan to use CTB IDs to fetch metadata from benchling, then you must configure secrets for the Benchling Warehouse credentials:
 
 ```console
-nextflow secrets set WAREHOUSE_USERNAME "username"
-nextflow secrets set WAREHOUSE_PASSWORD "password"
+nextflow secrets set WAREHOUSE_USERNAME 'username'
+nextflow secrets set WAREHOUSE_PASSWORD 'password'
+nextflow secrets set WAREHOUSE_HOST 'postgres-warehouse.tome.benchling.com'
+nextflow secrets set WAREHOUSE_PORT '5432'
+nextflow secrets set WAREHOUSE_DBNAME 'warehouse'
+nextflow secrets set WAREHOUSE_SSLMODE 'verify-ca'
 ```
 
-Note: there is a [bug](https://github.com/nextflow-io/nextflow/issues/4977) in Nextflow that prevents being able to use secrets that contain the `$` character.
+Note: make sure to enclose the secret in single-quotes.
 
 #### Running the workflow
 
