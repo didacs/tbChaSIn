@@ -599,7 +599,7 @@ class EndToEndFastqToBamData:
             else AttachmentSiteMatch(
                 site=AttachmentSite(name=query_alignment.target, left="", overhang="", right=""),
                 is_left=query_alignment.is_left,
-                score=numpy.NaN,
+                score=numpy.nan,
                 alignment_length=-1,
                 read_start_offset=-1,
             )

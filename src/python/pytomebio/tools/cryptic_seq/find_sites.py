@@ -64,6 +64,7 @@ def find_sites(
     r2_max_start_soft_clip: int = 0,
     inter_site_slop: int = 5,
     min_mapq: int = 20,
+    use_duplicates: bool = False,
 ) -> None:
     """Finds integration sites by examining read pair alignments.
 
@@ -91,6 +92,7 @@ def find_sites(
                          are summed, and the coordinate is the site with the largest count.  Set to
                          zero to not aggregate counts.
         min_mapq: the minimum mapping quality to consider for a read pair
+        use_duplicates: whether to consider reads that are marked as duplicates
     """
 
     site_generator = CrypticSeqSitesGenerator(r2_max_start_soft_clip=r2_max_start_soft_clip)
@@ -99,7 +101,7 @@ def find_sites(
         in_bam=in_bam,
         inter_site_slop=inter_site_slop,
         min_mapq=min_mapq,
-        use_duplicates=False,
+        use_duplicates=use_duplicates,
         same_reference=True,
     )
 
