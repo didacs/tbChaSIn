@@ -57,13 +57,13 @@ def trim_leading_attachment_site(
     attachment_site: List[AttachmentSite],
     max_mismatches: int = 1,
 ) -> None:
-    """Finds a leading left/right side of an attachment site at the end at the start of R2 and
+    """Finds a leading left (right) side of an attachment site at the end (start) of R2 and
     trims it.
 
     Any read pair that where the attachment site left/right is not found at the start of R2 is
     rejected.  If an attachment site left/right is found, then full attachment site
     (left+overhang+right) is aligned to the start of the read, and if found, the read is kept but
-    not trimmed.
+    neither trimmed nor has the attachment-site-specific SAM tags added (see below).
 
     The "rm" and "mm" SAM tags store information about which attachment site, if any, the given
     read and mate matched.
@@ -127,7 +127,7 @@ def trim_leading_attachment_site(
             assert best_match is not None, "Bug"
 
             # If we not only align to the leading attachment site, but also the full site (e.g.
-            # full attP or attB), we should not keep it.
+            # full attP or attB), we keep the record, but skip adding the TAG
             aligns_to_full_site = False
             if best_num_mismatches <= max_mismatches:
                 best_score = best_match.alignment_length - best_num_mismatches
@@ -139,14 +139,24 @@ def trim_leading_attachment_site(
                 )
 
             num_mismatches_counter[best_num_mismatches] += 1
-            if not aligns_to_full_site and best_num_mismatches <= max_mismatches:
-                template.r1.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, "None")
-                template.r1.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, best_match.to_sam_tag())
-                template.r2.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, best_match.to_sam_tag())
-                template.r2.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, "None")
-                r2_quals = template.r2.query_qualities
-                template.r2.query_sequence = r2_bases[best_match.alignment_length :]
-                template.r2.query_qualities = r2_quals[best_match.alignment_length :]
+            if best_num_mismatches <= max_mismatches:
+                # If R2 aligns fully to the full attachment site, we still keep the read, but we
+                # do not add the "attachment site match" tags.  The `find-sites` tool will later
+                # filter out reads without this tag (as a proxy for those that match the leading
+                # but not full atttachment site).  Such reads are kept in case we wish to know the
+                # number of reads that later align to the full attB or attP.
+                if not aligns_to_full_site:
+                    template.r1.set_tag(AttachmentSiteMatch.READ_MATCH_TAG, "None")
+                    template.r1.set_tag(
+                        AttachmentSiteMatch.MATE_MATCH_TAG, best_match.to_sam_tag()
+                    )
+                    template.r2.set_tag(
+                        AttachmentSiteMatch.READ_MATCH_TAG, best_match.to_sam_tag()
+                    )
+                    template.r2.set_tag(AttachmentSiteMatch.MATE_MATCH_TAG, "None")
+                    r2_quals = template.r2.query_qualities
+                    template.r2.query_sequence = r2_bases[best_match.alignment_length :]
+                    template.r2.query_qualities = r2_quals[best_match.alignment_length :]
                 for rec in template.all_recs():
                     keep_writer.write(rec)
             else:

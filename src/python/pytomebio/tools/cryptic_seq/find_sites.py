@@ -22,7 +22,9 @@ class CrypticSeqSitesGenerator(SitesGenerator):
     def get_key(self, template: Template) -> Optional[SiteKey]:
         read2: AlignedSegment = template.r2
 
-        # Do not consider reads where R2 does not have a leading attachment site mathc
+        # Do not consider reads where R2 does not have a leading attachment site match. Tools
+        # like trim-leading-attachment-site keep reads that align fully to the attachment
+        # site but do not store the "read match". Such reads are filtered out here.
         if not read2.has_tag(AttachmentSiteMatch.READ_MATCH_TAG):
             return None
 
