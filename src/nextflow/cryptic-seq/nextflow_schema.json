@@ -161,6 +161,17 @@
         "default_genome": ["ctb_id"]
       }
     },
+    "nextflow": {
+      "title": "Nextflow options",
+      "type": "object",
+      "description": "Options specific to the Nextflow workflow",
+      "properties": {
+        "fastq_chunk_size": {
+          "type": "integer",
+          "description": "The number of FASTQ records to process in each chunk. Defaults to not splitting FASTQ files."
+        }
+      }
+    },
     "snakemake": {
       "title": "Snakemake options",
       "type": "object",
@@ -233,6 +244,9 @@
   "allOf": [
     {
       "$ref": "#/defs/common"
+    },
+    {
+      "$ref": "#/defs/nextflow"
     },
     {
       "$ref": "#/defs/snakemake"

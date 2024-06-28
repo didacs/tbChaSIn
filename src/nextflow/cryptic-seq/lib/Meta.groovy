@@ -134,7 +134,7 @@ class Meta extends Nextflow{
             }
 
             new Meta(
-                id, replicate, group, attachmentSites, referenceDir, referenceName, fq1, fq2
+                id, replicate, group, attachmentSites, referenceDir, referenceName, fq1, fq2, null
             )
         }
     }
@@ -189,6 +189,39 @@ class Meta extends Nextflow{
     Path fq1
     /** Path to the read2 fastq file */
     Path fq2
+    /** Index that is set when the source FASTQs are split to make the ID unique. */
+    Integer index
+
+    /** 
+     * Returns a copy of this Meta with `index` set to the specified value. 
+     * Throws an exception if `index` is not `null`.
+     */
+    Meta withIndex(Integer index) {
+        if (this.index != null) {
+            throw new IllegalStateException("index has already been set")
+        }
+        return new Meta(
+            id, replicate, group, attachmentSites, referenceDir, referenceName, fq1, fq2, index
+        )
+    }
+
+    Meta withoutIndex() {
+        if (index != null) {
+            return new Meta(
+                id, replicate, group, attachmentSites, referenceDir, referenceName, fq1, fq2, null
+            )
+        } else {
+            return this
+        }
+    }
+
+    String getUniqueId() {
+        if (index != null) {
+            return "${id}.${index}"
+        } else {
+            return id
+        }
+    }
 
     String getReferenceFastaName() {
         return "${referenceName}.fasta.gz"

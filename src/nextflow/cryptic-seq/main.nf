@@ -24,7 +24,7 @@ log.info paramsSummaryLog(workflow)
 // so adding threading doesn't help here.
 process fastqc {
     label 'fastqc'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext memory: '4.GB'
 
     input:
@@ -35,7 +35,7 @@ process fastqc {
         path zip, emit: report_zip
     
     script:
-        def prefix = "${meta.id}.R${read_num}"
+        def prefix = "${meta.uniqueId}.R${read_num}"
         html = "${prefix}_fastqc.html"
         zip = "${prefix}_fastqc.zip"
         """
@@ -46,7 +46,7 @@ process fastqc {
 // Convert FASTQ to unaligned BAM and extract UMI information.
 process fastq_to_ubam {
     label 'fgbio'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(fq1), path(fq2)
@@ -55,7 +55,7 @@ process fastq_to_ubam {
         tuple val(meta), path(ubam), emit: ubam
     
     script:
-        ubam = "${meta.id}.raw.bam"
+        ubam = "${meta.uniqueId}.raw.bam"
         """
         fgbio \
             -Dsamjdk.use_async_io_read_samtools=true \
@@ -66,15 +66,15 @@ process fastq_to_ubam {
             --input "${fq1}" "${fq2}" \
             --output "${ubam}" \
             --read-structure "${params.read_structure_r1}" "${params.read_structure_r2}" \
-            --sample "${meta.id}" \
-            --library "${meta.id}"
+            --sample "${meta.uniqueId}" \
+            --library "${meta.uniqueId}"
         """
 }
 
 // Trims the start of R1s for the Tn5 mosaic end.
 process trim_r1_tn5me {
     label 'tools'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(bam)
@@ -85,9 +85,9 @@ process trim_r1_tn5me {
         path metric_tsv, emit: metric_tsv
     
     script:
-        keep_bam = "${meta.id}.cryptic_seq.trim_for_tn5me.keep.bam"
-        reject_bam = "${meta.id}.cryptic_seq.trim_for_tn5me.reject.bam"
-        metric_tsv = "${meta.id}.cryptic_seq.trim_for_tn5me.metrics.tsv"
+        keep_bam = "${meta.uniqueId}.cryptic_seq.trim_for_tn5me.keep.bam"
+        reject_bam = "${meta.uniqueId}.cryptic_seq.trim_for_tn5me.reject.bam"
+        metric_tsv = "${meta.uniqueId}.cryptic_seq.trim_for_tn5me.metrics.tsv"
         """
         tomebio-tools cryptic-seq trim-r1-tn5me \
             --in-bam "${bam}" \
@@ -101,7 +101,7 @@ process trim_r1_tn5me {
 // Trims the start of R2s for the leading attachment site.
 process trim_leading_attachment_site {
     label 'tools'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(bam)
@@ -112,9 +112,9 @@ process trim_leading_attachment_site {
         path metric_tsv, emit: metric_tsv
     
     script:
-        keep_bam = "${meta.id}.trim_leading_attachment_site.keep.bam"
-        reject_bam = "${meta.id}.trim_leading_attachment_site.reject.bam"
-        metric_tsv = "${meta.id}.trim_leading_attachment_site.metrics.tsv"
+        keep_bam = "${meta.uniqueId}.trim_leading_attachment_site.keep.bam"
+        reject_bam = "${meta.uniqueId}.trim_leading_attachment_site.reject.bam"
+        metric_tsv = "${meta.uniqueId}.trim_leading_attachment_site.metrics.tsv"
         """
         tomebio-tools cryptic-seq trim-leading-attachment-site \
             --in-bam "${bam}" \
@@ -129,7 +129,7 @@ process trim_leading_attachment_site {
 // Trims the end of R2s for the Tn5 mosaic end.
 process trim_r2_tn5me {
     label 'tools'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(bam)
@@ -140,9 +140,9 @@ process trim_r2_tn5me {
         path metric_tsv, emit: metric_tsv
     
     script:
-        keep_bam = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.keep.bam"
-        reject_bam = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.reject.bam"
-        metric_tsv = "${meta.id}.cryptic_seq.trim_r2_for_tn5me.metrics.tsv"
+        keep_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_tn5me.keep.bam"
+        reject_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_tn5me.reject.bam"
+        metric_tsv = "${meta.uniqueId}.cryptic_seq.trim_r2_for_tn5me.metrics.tsv"
         def min_score_opt = ""
         if (params.trim_Tn5_r2_min_score != null) {
             min_score_opt = "--min-score ${params.trim_Tn5_r2_min_score}"
@@ -170,7 +170,7 @@ process trim_r2_tn5me {
 // Trims the end of R2s for the Tn5 mosaic end.
 process trim_r2_adapter {
     label 'tools'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(bam)
@@ -181,9 +181,9 @@ process trim_r2_adapter {
         path metric_tsv, emit: metric_tsv
     
     script:
-        keep_bam = "${meta.id}.cryptic_seq.trim_r2_for_adapter.keep.bam"
-        reject_bam = "${meta.id}.cryptic_seq.trim_r2_for_adapter.reject.bam"
-        metric_tsv = "${meta.id}.cryptic_seq.trim_r2_for_adapter.metrics.tsv"
+        keep_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_adapter.keep.bam"
+        reject_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_adapter.reject.bam"
+        metric_tsv = "${meta.uniqueId}.cryptic_seq.trim_r2_for_adapter.metrics.tsv"
         def min_score_opt = ""
         if (params.trim_adapter_r2_min_score != null) {
             min_score_opt = "--min-score ${params.trim_adapter_r2_min_score}"
@@ -209,13 +209,37 @@ process trim_r2_adapter {
         """
 }
 
+// Concatenates multiple BAMs into a single BAM.
+process concatenate_bams {
+    label 'fgbio' // TODO: create a separate hts label/image
+    tag "${meta.uniqueId}"
+
+    input:
+        tuple val(meta), path(bams)
+    
+    output:
+        tuple val(meta), path(concatenated_bam), emit: concatenated_bam
+    
+    shell:
+        concatenated_bam = "${meta.uniqueId}.concatenated.bam"
+        def bam_paths = bams.collect { it.toString() }.join(' ')
+        def compression_threads = task.cpus - 1
+        """
+        readlink ${bam_paths} > bams
+        samtools cat \
+            -b bams \
+            -o "${concatenated_bam}" \
+            -@ ${compression_threads}
+        """
+}
+
 // Aligns the reads in the unmapped BAM to the reference genome and sorts 
 // by coordinate. Important: runs with -Y so hard-clipping is not performed 
 // on supplementary alignments, but instead soft-clipping. This is important
 // to retain all bases for downstream analysis.
 process align {
     label 'fgbio'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext cpus: 8, memory: '16.GB'
 
     input:
@@ -228,7 +252,7 @@ process align {
         tuple val(meta), path(mapped_bam), path(mapped_index), emit: mapped_bam
 
     shell:
-        mapped_bam = "${meta.id}.mapped.bam"
+        mapped_bam = "${meta.uniqueId}.mapped.bam"
         mapped_index = "${mapped_bam}.csi"
         def reference_fasta = reference_dir / "${reference_fasta_name}"
         // TODO: make these configurable
@@ -262,7 +286,7 @@ process align {
 // Clip reads in FR pairs that sequence past the far end of their mate.
 process clip_bam {
     label 'fgbio'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext cpus: 2
 
     input:
@@ -274,9 +298,9 @@ process clip_bam {
         path metric_tsv, emit: metric_tsv
     
     script:
-        clipped_bam = "${meta.id}.clipped.bam"
-        clipped_index = "${meta.id}.clipped.bai"
-        metric_tsv = "${meta.id}.clipped.txt"
+        clipped_bam = "${meta.uniqueId}.clipped.bam"
+        clipped_index = "${meta.uniqueId}.clipped.bai"
+        metric_tsv = "${meta.uniqueId}.clipped.txt"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
         def fgbio_mem_gb = total_mem_gb >= 10 ? 
@@ -307,7 +331,7 @@ process clip_bam {
 
 process copy_umi_from_read_name {
     label 'fgbio'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
 
     input:
         tuple val(meta), path(bam), path(index)
@@ -316,8 +340,8 @@ process copy_umi_from_read_name {
         tuple val(meta), path(bam_with_rx), path(index_with_rx), emit: bam_with_rx
 
     script:
-        bam_with_rx = "${meta.id}.umi_from_read_name.bam"
-        index_with_rx = "${meta.id}.umi_from_read_name.bai"
+        bam_with_rx = "${meta.uniqueId}.umi_from_read_name.bam"
+        index_with_rx = "${meta.uniqueId}.umi_from_read_name.bai"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
         def fgbio_mem_gb = total_mem_gb >= 10 ? 
@@ -337,7 +361,7 @@ process copy_umi_from_read_name {
 // Marks PCR duplicates.
 process mark_duplicates {
     label 'picard'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext memory: '16.GB'
 
     input:
@@ -349,9 +373,9 @@ process mark_duplicates {
         path metric_txt, emit: metric_txt
     
     script:
-        deduped_bam = "${meta.id}.deduped.bam"
-        deduped_index = "${meta.id}.deduped.bai"
-        metric_txt = "${meta.id}.mark_duplicates.txt"
+        deduped_bam = "${meta.uniqueId}.deduped.bam"
+        deduped_index = "${meta.uniqueId}.deduped.bai"
+        metric_txt = "${meta.uniqueId}.mark_duplicates.txt"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
         def picard_mem_gb = total_mem_gb >= 10 ?
@@ -381,7 +405,7 @@ process mark_duplicates {
 // run this tool on its own without plotting output (HISTOGRAM argument).
 process collect_alignment_summary_metrics {
     label 'picard'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext memory: '16.GB'
 
     input:
@@ -391,7 +415,7 @@ process collect_alignment_summary_metrics {
         path metric_txt, emit: metric_txt 
     
     script:
-        metric_txt = "${meta.id}.alignment_summary_metrics.txt"
+        metric_txt = "${meta.uniqueId}.alignment_summary_metrics.txt"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
         def picard_mem_gb = total_mem_gb >= 10 ?
@@ -414,7 +438,7 @@ process collect_alignment_summary_metrics {
 // Collect basic sequencing quality metrics.
 process collect_multiple_metrics {
     label 'picard'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext memory: '16.GB'
 
     input:
@@ -424,7 +448,7 @@ process collect_multiple_metrics {
         path metric_txt, emit: metric_txt 
     
     script:
-        metric_txt = "${meta.id}.quality_yield_metrics.txt"
+        metric_txt = "${meta.uniqueId}.quality_yield_metrics.txt"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
         def picard_mem_gb = total_mem_gb >= 10 ?
@@ -439,7 +463,7 @@ process collect_multiple_metrics {
             -Xmx${picard_mem_gb}g \
             CollectMultipleMetrics \
             --INPUT "${bam}" \
-            --OUTPUT "${meta.id}" \
+            --OUTPUT "${meta.uniqueId}" \
             --REFERENCE_SEQUENCE "${reference_fasta}" \
             --PROGRAM null \
             --PROGRAM QualityScoreDistribution \
@@ -476,7 +500,7 @@ process multiqc {
 // Finds putative integration sites.
 process find_sites {
     label 'tools'
-    tag "${meta.id}"
+    tag "${meta.uniqueId}"
     ext cpus: 2
 
     input:
@@ -486,7 +510,7 @@ process find_sites {
         tuple val(meta), path(sites_txt), emit: sites_txt
     
     script:
-        sites_txt = "${meta.id}.sites.txt"
+        sites_txt = "${meta.uniqueId}.sites.txt"
         """
         samtools sort -n ${bam} \
         | tomebio-tools cryptic-seq find-sites \
@@ -607,32 +631,58 @@ workflow cryptic_seq {
     }
     fastqc(single_input)
 
+    split_fastq = params.fastq_chunk_size != null
+
     // call the main pipeline with pairs of fastqs
-    paired_input = sample_meta.map { meta -> 
-        tuple(meta, meta.fq1, meta.fq2)
+    if (split_fastq) {
+        // split each file into chunks of the specified size
+        // right now the index is only used to make the intermediate file names unique,
+        // but it could also be used to sort the chunks prior to merging so that the
+        // merged reads are in the same order as the input
+        idx = 1
+        paired_input = sample_meta
+            .map { meta -> tuple(meta, meta.fq1, meta.fq2) }
+            .splitFastq(by: params.fastq_chunk_size, file: true, pe: true)
+            .map { meta, fq1, fq2 -> tuple(meta.withIndex(idx++), fq1, fq2) }
+    } else {
+        paired_input = sample_meta
+            .map { meta -> tuple(meta, meta.fq1, meta.fq2) }
     }
+    
     fastq_to_ubam(paired_input)
 
     if (params.trim_Tn5) {
         trim_r1_tn5me(fastq_to_ubam.out.ubam)
-        trim_bam_r1 = trim_r1_tn5me.out.keep_bam
+        trim_ubam_r1 = trim_r1_tn5me.out.keep_bam
     } else {
-        trim_bam_r1 = fastq_to_ubam.out.ubam
+        trim_ubam_r1 = fastq_to_ubam.out.ubam
     }
 
-    trim_leading_attachment_site(trim_bam_r1)
+    trim_leading_attachment_site(trim_ubam_r1)
 
     if (params.trim_Tn5_r2) {
         trim_r2_tn5me(trim_leading_attachment_site.out.keep_bam)
-        trim_bam_r2 = trim_r2_tn5me.out.keep_bam
+        trim_ubam_r2 = trim_r2_tn5me.out.keep_bam
     } else if (params.trim_adapter_r2 != null) {
         trim_r2_adapter(trim_leading_attachment_site.out.keep_bam)
-        trim_bam_r2 = trim_r2_adapter.out.keep_bam
+        trim_ubam_r2 = trim_r2_adapter.out.keep_bam
     } else {
-        trim_bam_r2 = trim_leading_attachment_site.out.keep_bam
+        trim_ubam_r2 = trim_leading_attachment_site.out.keep_bam
+    }
+
+    if (split_fastq) {
+        // remove the index from the meta so all the metas with same id
+        // will group together
+        bam_group = trim_ubam_r2
+            .map { meta, bam -> tuple(meta.withoutIndex(), bam) }
+            .groupTuple()
+        concatenate_bams(bam_group)
+        final_ubam = concatenate_bams.out.concatenated_bam
+    } else {
+        final_ubam = trim_ubam_r2
     }
     
-    align_input = trim_bam_r2.map { meta, bam ->
+    align_input = final_ubam.map { meta, bam ->
         tuple(meta, bam, meta.referenceDir, meta.referenceFastaName)
     }
     align(align_input)
