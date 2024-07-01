@@ -20,6 +20,7 @@ by name (without the .yml extension).
 
 Optional:
     -A  Activate the environment
+    -C  Clean Mamba cache after installing
     -R  Remove all packages from the environment before installing
     -m  Name/path of Mamba executable (defaults to 'mamba')
     -n  Specify the env name (defaults to 'tbChaSIn')
@@ -37,13 +38,15 @@ confs="${root}/mamba"
 
 env="tbChaSIn"
 activate=false
+clean=false
 remove_all=false
 mamba="mamba"
 all=false
 only=false
-while getopts "ARaom:n:" flag; do
+while getopts "ACRaom:n:" flag; do
     case "${flag}" in
     A) activate=true ;;
+    C) clean=true ;;
     R) remove_all=true ;;
     m) mamba="${OPTARG}" ;;
     n) env="${OPTARG}" ;;
@@ -121,7 +124,9 @@ else
     done
 fi
 
-clean_env
+if ${clean}; then
+    clean_env
+fi
 
 if ${activate}; then
     activate_env
