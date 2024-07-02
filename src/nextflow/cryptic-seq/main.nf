@@ -213,6 +213,7 @@ process trim_r2_adapter {
 process concatenate_bams {
     label 'fgbio' // TODO: create a separate hts label/image
     tag "${meta.uniqueId}"
+    ext cpus: 4
 
     input:
         tuple val(meta), path(bams)
@@ -253,20 +254,19 @@ process align {
 
     shell:
         mapped_bam = "${meta.uniqueId}.mapped.bam"
-        mapped_index = "${mapped_bam}.csi"
+        mapped_index = "${mapped_bam}.bai"
         def reference_fasta = reference_dir / "${reference_fasta_name}"
         // TODO: make these configurable
-        def bwa_threads = [task.cpus - 1, 1].max()
-        def sort_threads = [task.cpus - bwa_threads, 1].max()
+        def sort_threads = 2
         def total_mem_gb = task.memory.giga
-        def sort_mem_gb = [Math.round(total_mem_gb * 0.1), 1].max()
+        def sort_mem_gb = [Math.round(total_mem_gb * 0.1), 2].max() / sort_threads
         def fgbio_mem_gb = [Math.round(total_mem_gb * 0.1), 1].max()
         """
-        samtools fastq -N ${bam} \
+        samtools fastq -N "${bam}" \
         | bwa mem \
             -Y \
             -K 320000000 \
-            -t ${bwa_threads} \
+            -t ${task.cpus} \
             -p "${reference_fasta}" \
             - \
         | fgbio \
@@ -278,8 +278,13 @@ process align {
         | samtools sort \
             -m ${sort_mem_gb}G \
             -@ ${sort_threads} \
-            -o "${mapped_bam}" \
-            --write-index
+            -u \
+            -O bam \
+        | samtools view \
+            -@ ${task.cpus} \
+            -o "${mapped_bam}##idx##${mapped_index}" \
+            --write-index \
+            -
         """
 }
 
@@ -287,7 +292,7 @@ process align {
 process clip_bam {
     label 'fgbio'
     tag "${meta.uniqueId}"
-    ext cpus: 2
+    ext cpus: 4
 
     input:
         tuple val(meta), path(bam), path(index), path(reference_fasta), path(reference_index)
@@ -301,23 +306,24 @@ process clip_bam {
         clipped_bam = "${meta.uniqueId}.clipped.bam"
         clipped_index = "${meta.uniqueId}.clipped.bai"
         metric_tsv = "${meta.uniqueId}.clipped.txt"
-        def total_mem_gb = task.memory.giga
-        // TODO: make configurable
-        def fgbio_mem_gb = total_mem_gb >= 10 ? 
-            Math.round(total_mem_gb * 0.8) : [total_mem_gb - 1, 1].max()
-        def sort_mem_gb = [total_mem_gb - fgbio_mem_gb, 1].max()
+        // The sorting step will complete before ClipBam runs, so we can
+        // use all CPUs and memory for sorting
+        def sort_mem_gb = task.memory.giga / task.cpus
         """
         samtools sort \
             -n \
             -u \
             -m ${sort_mem_gb}G \
+            -@ ${task.cpus} \
+            -u \
+            -O bam \
             "${bam}" \
         | fgbio \
             -Dsamjdk.use_async_io_read_samtools=true \
             -Duse_async_io_write_samtools=true \
             -XX:GCTimeLimit=50 \
             -XX:GCHeapFreeLimit=10 \
-            -Xmx${fgbio_mem_gb}g \
+            -Xmx${task.memory.giga}g \
             ClipBam \
             --input /dev/stdin \
             --ref "${reference_fasta}" \
@@ -501,7 +507,7 @@ process multiqc {
 process find_sites {
     label 'tools'
     tag "${meta.uniqueId}"
-    ext cpus: 2
+    ext cpus: 4
 
     input:
         tuple val(meta), path(bam)
@@ -511,11 +517,20 @@ process find_sites {
     
     script:
         sites_txt = "${meta.uniqueId}.sites.txt"
+        // The sorting step will complete before find-sites runs, so we can
+        // use all CPUs and memory for sorting
+        def sort_mem_gb = task.memory.giga / task.cpus
         """
-        samtools sort -n ${bam} \
+        samtools sort \
+            -n \
+            -m ${sort_mem_gb}G \
+            -@ ${task.cpus} \
+            -u \
+            -O bam \
+            "${bam}" \
         | tomebio-tools cryptic-seq find-sites \
             --in-bam - \
-            --out-txt ${sites_txt}
+            --out-txt "${sites_txt}"
         """
 }
 
