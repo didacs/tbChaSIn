@@ -8,7 +8,7 @@ import nextflow.util.KryoHelper
 
 @CompileDynamic
 @ValueObject
-@Immutable(copyWith = true)
+@Immutable(copyWith = true, knownImmutables = ['references'])
 class References extends Nextflow {
     static {
         KryoHelper.register(References)
