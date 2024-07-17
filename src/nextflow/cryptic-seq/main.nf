@@ -292,7 +292,7 @@ process align {
 process clip_bam {
     label 'fgbio'
     tag "${meta.uniqueId}"
-    ext cpus: 4
+    ext cpus: 4, memory: "5.GB"
 
     input:
         tuple val(meta), path(bam), path(index), path(reference_fasta), path(reference_index)
@@ -308,11 +308,11 @@ process clip_bam {
         metric_tsv = "${meta.uniqueId}.clipped.txt"
         // The sorting step will complete before ClipBam runs, so we can
         // use all CPUs and memory for sorting
-        def sort_mem_gb = task.memory.giga / task.cpus
+        def sort_mem_gb = [Math.round((task.memory.giga - 1) / task.cpus), 1].max()
         """
+        set -eo pipefail
         samtools sort \
             -n \
-            -u \
             -m ${sort_mem_gb}G \
             -@ ${task.cpus} \
             -u \
@@ -519,7 +519,7 @@ process find_sites {
         sites_txt = "${meta.uniqueId}.sites.txt"
         // The sorting step will complete before find-sites runs, so we can
         // use all CPUs and memory for sorting
-        def sort_mem_gb = task.memory.giga / task.cpus
+        def sort_mem_gb = [Math.round((task.memory.giga - 1) / task.cpus), 1].max()
         """
         samtools sort \
             -n \

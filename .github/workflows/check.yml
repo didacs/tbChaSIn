@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GENOMES: "GCF_000001405.40_GRCh38.p14;GCF_000001635.27_GRCm39"
+      CHROMOSOMES: "chr1;chr1"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -62,8 +63,9 @@ jobs:
       shell: micromamba-shell {0}
       run: |
         IFS=';' read -ra genomes <<< "$GENOMES"
-        for genome in "${genomes[@]}"; do
-          bash scripts/build_reference.sh -D ./data -g ${genome} -c chr1 -x
+        IFS=';' read -ra chromos <<< "$CHROMOSOMES"
+        for (( i=0; i<${#genomes[*]}; ++i )); do
+          bash scripts/build_reference.sh -D ./data -g ${genomes[$i]} -c ${chromos[$i]} -x
         done
     - name: Run workflow
       shell: micromamba-shell {0}

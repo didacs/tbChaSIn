@@ -132,7 +132,7 @@ download_genome_file() {
   outfile="${outdir}/${filename}"
   # for some reason wget exits with code 4 even after successfully downloading
   set +e
-  wget -P "${outdir}" -F "${filename}" "${file_uri}"
+  wget -P "${outdir}" -F "${file_uri}"
   rc=$?
   if [ $rc -ne 0 ]; then
     if [ $rc -ne 4 ]; then

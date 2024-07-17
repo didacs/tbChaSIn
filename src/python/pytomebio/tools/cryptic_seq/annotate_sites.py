@@ -99,18 +99,19 @@ parse_group = core.key_value_parser(r'(\w+)\s+"([^"]*)"\s*;')
 
 def get_threat_tier(row: pd.Series) -> pd.Series:
     """
-    Get the threat tier based on list of features in a row.
-    If there are more than one overlapping feature (expected if gene contains multiple transcript
-    isoforms), the following criteria is applied:
-        * CDS as feauture in any of the transcript isoforms -> tier I
-        * no CDS but any of the transcript isoform is protein coding-> tier II
-        * overlaps non-protein coding gene only -> tier III
+    Get the threat tier based on overlapping features from the gene annotation.
+    The following criteria is applied:
+        * if overlaps a CDS in any of the transcript isoforms -> tier I
+        * elif overlaps a protein coding gene (if no CDS, must be intron or UTR) -> tier II
+        * overlaps at least one gene, but none is protein coding -> tier III
         * no overlapping gene -> tier IV
     """
     assert len(row.feature) == len(row.group)
 
     has_overlap = False
     has_gene = False
+    has_protein_coding = False
+
     for feature, group in zip(row.feature, row.group):
         if feature == "." and group == ".":
             continue
@@ -123,14 +124,16 @@ def get_threat_tier(row: pd.Series) -> pd.Series:
             has_gene = True
             annotations = parse_group(group)
             if annotations["gene_biotype"] == "protein_coding":
-                return "II"
+                has_protein_coding = True
 
-    if has_gene:
+    if has_protein_coding:
+        return "II"
+    elif has_gene:
         return "III"
     elif not has_overlap:
         return "IV"
     else:
-        raise Exception("Row does not contain a CDS or gene feature: {row}")
+        raise Exception("Cannot assign threat tier for: {row}")
 
 
 def overlapping_gene(row: pd.Series) -> Optional[str]:
