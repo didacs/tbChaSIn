@@ -4,6 +4,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - fgbio-minimal=2.2.1
+  - fgbio-minimal=2.3.0
   - samtools=1.19.2
   - bwa=0.7.17
