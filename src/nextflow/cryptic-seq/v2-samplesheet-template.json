@@ -1,0 +1,27 @@
+{
+  "header": {
+    "file_format_version": 2,
+    "run_name": "",
+    "instrument_platform": "NextSeq1k2k",
+    "index_orientation": "Forward"
+  },
+  "reads": {
+    "read_1_cycles": 151,
+    "read_2_cycles": 151,
+    "index_1_cycles": 8,
+    "index_2_cycles": 16
+  },
+  "bclconvert_settings": {
+    "override_cycles": "Y151;I8;I8U8;Y151",
+    "no_lane_splitting": true,
+    "fastq_compression_format": "gzip",
+    "software_version": ""
+  },
+  "bclconvert_data": [],
+  "cloud_settings": {
+    "generated_version": "1.13.0.202404040151",
+    "cloud_workflow": "ica_workflow_1",
+    "bclconvert_pipeline": "urn:ilmn:ica:pipeline:ed399cc0-be8e-4cee-9a80-9ddb85e49f79#BclConvert_v4_2_7"
+  },
+  "cloud_data": []
+}
