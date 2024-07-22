@@ -27,6 +27,10 @@ from pytomebio.tools.cryptic_seq.resolve_references import (
 from pytomebio.tools.cryptic_seq.trim_leading_attachment_site import (
     trim_leading_attachment_site as cryptic_trim_leading_attachment_site,
 )
+from pytomebio.tools.cryptic_seq.create_v2_samplesheet import (
+    create_v2_samplesheet as cryptic_seq_create_v2_samplesheet,
+)
+
 from pytomebio.tools.cryptic_seq.trim_r1_tn5me import trim_r1_tn5me as cryptic_seq_trim_r1_tn5me
 from pytomebio.tools.cryptic_seq.trim_r2 import trim_r2 as cryptic_seq_trim_r2
 from pytomebio.tools.durant.filter_reads import filter_reads as durant_filter_reads
@@ -43,6 +47,7 @@ TOOLS: Dict[str, List[Callable]] = {
     "cryptic-seq": [
         cryptic_seq_create_metasheet_from_benchling,
         cryptic_seq_create_config_from_metasheet,
+        cryptic_seq_create_v2_samplesheet,
         cryptic_seq_find_sites,
         cryptic_seq_resolve_references,
         cryptic_seq_trim_r1_tn5me,
