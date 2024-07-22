@@ -30,7 +30,6 @@ EOF
 
 parent=$(cd "$(dirname "$0")" && pwd -P)
 root="$(dirname "${parent}")"
-confs="${root}/mamba"
 
 project="tomebio"
 version="1.0"
@@ -73,15 +72,9 @@ if ${snakemake}; then
     build_snakemake
 elif [ "$#" -eq 0 ]; then
     # build all images
-    for conf_yml in "${confs}"/*.yml; do
-        filename=$(basename -- "${conf_yml}")
-        target="${filename%.yml}"
-        # ignore dev.yml
-        if [ "${target}" = "dev" ]; then
-            continue
-        fi
+    while read -r target; do
         build_target "${target}"
-    done
+    done <"${root}/docker/.targets"
 else
     for target in "$@"; do
         build_target "${target}"
