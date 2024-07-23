@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 biopython = "^1.83"
 defopt = "^6.4.0"
 fgpyo = "^0.2.0"
@@ -26,6 +26,7 @@ psycopg = { version = "^3.1.18", extras = ["binary","pool"] }
 pybedtools="^0.10.0"
 pysam = "^0.22.0"
 pyyaml = "^6.0.1"
+v2-samplesheet-maker = "^4.2.4.post20240528161300"
 
 [tool.poetry.group.dev.dependencies]
 pytest="^8.0.0"

@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   # Python
-  - python=3.9.18
+  - python=3.10
   - pip=24.0
   - ruff=0.2.1
   - mypy=1.8.0

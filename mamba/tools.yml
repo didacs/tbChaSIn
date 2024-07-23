@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9.18
+  - python=3.10
   - bedtools=2.31.1
   - bwa=0.7.17
   - samtools=1.19.2
