@@ -108,3 +108,23 @@ ENV WAREHOUSE_SSLROOTCERT="/home/$MAMBA_USER/.postgresql/root.crt"
 COPY --from=tools-build --chown=$MAMBA_USER:$MAMBA_USER /tbChaSIn/dist/*.whl .
 RUN pip install *.whl \
     && rm -Rf *.whl
+
+# Build bcl-convert
+FROM debian:bullseye-slim as bcl-convert
+ARG BCLCONVERT_VERSION="4.2.7"
+# Install procps and clean apt cache
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    procps \
+    rpm2cpio \
+    cpio \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+# Link hostname cmd to fix hardcoded path
+RUN ln -s /bin/hostname /usr/bin/hostname
+# Install bcl-convert
+ADD https://s3.amazonaws.com/webdata.illumina.com/downloads/software/bcl-convert/bcl-convert-4.2.7-2.el7.x86_64.rpm bcl-convert.rpm
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN rpm2cpio bcl-convert.rpm | cpio -idmv \
+    && rm bcl-convert.rpm
+RUN rm -rf /var/log/bcl-convert && ln -sfT /tmp /var/log/bcl-convert

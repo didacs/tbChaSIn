@@ -1,31 +1,23 @@
 import json
-import os
-import pandas as pd
 import subprocess
+from io import StringIO
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import Optional
+import pandas as pd
 
 
-def remove_Ns(
-    v1_index2: str,
-    umi_cycles: int
-) -> str:
+def remove_Ns(v1_index2: str, umi_cycles: int) -> str:
     """
     Remove trailing 'N' characters from the string v1_index2.
     Ensure the resulting string has a length equal to umi_cycles.
     """
-    assert v1_index2.count('N') == umi_cycles, \
-        f"UMI length in index 1 ({v1_index2.count('N')}) != umi_cycles ({umi_cycles})"
-    v2_index2 = v1_index2.rstrip('N')
+    assert (
+        v1_index2.count("N") == umi_cycles
+    ), f"UMI length in index 1 ({v1_index2.count('N')}) != umi_cycles ({umi_cycles})"
+    v2_index2 = v1_index2.rstrip("N")
     return v2_index2
 
 
-def populate_cloud_data(
-    v1_data: pd.DataFrame,
-    ProjectName: str,
-    umi_cycles: int
-) -> list:
+def populate_cloud_data(v1_data: pd.DataFrame, ProjectName: str, umi_cycles: int) -> list:
     """
     Populate cloud data from v1 data.
 
@@ -47,23 +39,19 @@ def populate_cloud_data(
     representing a row of cloud data, and returned.
     """
     cloud_data = v1_data.copy()
-    cloud_data['index2'] = cloud_data['index2'].apply(
-        remove_Ns,
-        umi_cycles=umi_cycles)
-    cloud_data['ProjectName'] = ProjectName
-    cloud_data['LibraryName'] = (cloud_data['Sample_ID']
-                                 + '_'
-                                 + cloud_data['index']
-                                 + '_'
-                                 + cloud_data['index2'])
+    cloud_data["index2"] = cloud_data["index2"].apply(remove_Ns, umi_cycles=umi_cycles)
+    cloud_data["ProjectName"] = ProjectName
+    cloud_data["LibraryName"] = (
+        cloud_data["Sample_ID"] + "_" + cloud_data["index"] + "_" + cloud_data["index2"]
+    )
 
     cols = {
-        'Sample_ID':'sample_id',
-        'ProjectName':'project_name',
-        'LibraryName':'library_name',
+        "Sample_ID": "sample_id",
+        "ProjectName": "project_name",
+        "LibraryName": "library_name",
     }
     cloud_data = cloud_data.rename(columns=cols)[list(cols.values())]
-    return cloud_data.to_dict(orient='records')
+    return cloud_data.to_dict(orient="records")
 
 
 def populate_bclconvert_data(
@@ -87,17 +75,11 @@ def populate_bclconvert_data(
     converted to a list of dictionaries with each dictionary representing a row
     of bclconvert data, and returned.
     """
-    cols = [
-        'Sample_ID',
-        'index',
-        'index2'
-    ]
+    cols = ["Sample_ID", "index", "index2"]
     bclconvert_data = v1_data[cols].copy()
-    bclconvert_data['index2'] = bclconvert_data['index2'].apply(
-        remove_Ns,
-        umi_cycles=umi_cycles)
+    bclconvert_data["index2"] = bclconvert_data["index2"].apply(remove_Ns, umi_cycles=umi_cycles)
     bclconvert_data.columns = bclconvert_data.columns.str.lower()
-    return bclconvert_data.to_dict(orient='records')
+    return bclconvert_data.to_dict(orient="records")
 
 
 def get_umi_cycles(v2_metasheet: dict) -> int:
@@ -117,9 +99,10 @@ def get_umi_cycles(v2_metasheet: dict) -> int:
     component separated by semicolons in the 'override_cycles' string. If the UMI cycles
     are prefixed with 'U', it extracts the numeric part after 'U' and returns it as an integer.
     """
-    override_cycles = v2_metasheet['bclconvert_settings']['override_cycles']
-    index_2_cycles = override_cycles.split(';')[2]
-    return int(index_2_cycles.split('U')[-1])
+    override_cycles = v2_metasheet["bclconvert_settings"]["override_cycles"]
+    index_2_cycles = override_cycles.split(";")[2]
+    return int(index_2_cycles.split("U")[-1])
+
 
 def v2_metasheet_template(v2_template: Path) -> dict:
     """
@@ -132,7 +115,7 @@ def v2_metasheet_template(v2_template: Path) -> dict:
         dict: Dictionary representing the v2 metasheet template.
     """
     # Open and load the JSON file
-    with open(v2_template, 'r') as file:
+    with open(v2_template, "r") as file:
         return json.load(file)
 
 
@@ -147,15 +130,15 @@ def v1_samplesheet_data(v1_samplesheet: Path) -> pd.DataFrame:
         pd.DataFrame: DataFrame containing the data from the samplesheet.
 
     """
-    with open(v1_samplesheet, 'r') as file:
+    with open(v1_samplesheet, "r") as file:
         in_data_section = False
         data_lines = []
 
         for line in file:
-            if line.strip() == '[Data]':
+            if line.strip() == "[Data]":
                 in_data_section = True
                 continue
-            elif line.strip().startswith('[') and line.strip() != '[Data]':
+            elif line.strip().startswith("[") and line.strip() != "[Data]":
                 if in_data_section:
                     break
 
@@ -163,10 +146,10 @@ def v1_samplesheet_data(v1_samplesheet: Path) -> pd.DataFrame:
                 data_lines.append(line.strip())
 
         if not data_lines:
-            raise ValueError('No [Data] section found or it is empty')
+            raise ValueError("No [Data] section found or it is empty")
 
         # Combine the collected lines into a single string
-        data_str = '\n'.join(data_lines)
+        data_str = "\n".join(data_lines)
 
         # Use StringIO to simulate a file object for pandas
         data_io = StringIO(data_str)
@@ -204,15 +187,10 @@ def create_v2_samplesheet(
     v1_data = v1_samplesheet_data(v1_samplesheet)
     v2_metasheet = v2_metasheet_template(v2_template)
     umi_cycles = get_umi_cycles(v2_metasheet)
-    v2_metasheet['header']['run_name'] = ctb_id
-    v2_metasheet['bclconvert_data'] = populate_bclconvert_data(
-        v1_data,
-        umi_cycles=umi_cycles
-    )
-    v2_metasheet['cloud_data'] = populate_cloud_data(
-        v1_data,
-        ProjectName=ctb_id,
-        umi_cycles=umi_cycles
+    v2_metasheet["header"]["run_name"] = ctb_id
+    v2_metasheet["bclconvert_data"] = populate_bclconvert_data(v1_data, umi_cycles=umi_cycles)
+    v2_metasheet["cloud_data"] = populate_cloud_data(
+        v1_data, ProjectName=ctb_id, umi_cycles=umi_cycles
     )
 
     with open("v2_tmp.json", "w") as outfile:
