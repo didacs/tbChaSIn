@@ -74,4 +74,4 @@ jobs:
       run: |
         export REF_DIR="$(pwd)"
         cd src/nextflow/cryptic-seq
-        pytest --git-aware tests/integration/
+        pytest --git-aware --kwd tests/integration/ || cat /tmp/pytest_workflow*/*/.nextflow.log

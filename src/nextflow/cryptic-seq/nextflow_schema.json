@@ -143,6 +143,11 @@
           "description": "The minimum length of the R2 sequence after trimming to keep the read pair.",
           "default": 25
         },
+        "keep_full_sites": {
+          "type": "boolean",
+          "description": "Whether to keep reads with the full attachment site in the BAM file when trimming.",
+          "default": false
+        },
         "umi_from_read_name": {
           "type": "boolean",
           "description": "Whether to extract the UMI from the read name instead of the sequence.",

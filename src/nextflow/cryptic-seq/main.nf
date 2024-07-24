@@ -109,20 +109,33 @@ process trim_leading_attachment_site {
     output:
         tuple val(meta), path(keep_bam), emit: keep_bam
         tuple val(meta), path(reject_bam), emit: reject_bam
+        tuple val(meta), path(full_site_bam), emit: full_site_bam, optional: true
         path metric_tsv, emit: metric_tsv
+        path summary_json, emit: summary_json
     
     script:
-        keep_bam = "${meta.uniqueId}.trim_leading_attachment_site.keep.bam"
-        reject_bam = "${meta.uniqueId}.trim_leading_attachment_site.reject.bam"
-        metric_tsv = "${meta.uniqueId}.trim_leading_attachment_site.metrics.tsv"
+        keep_bam = "${meta.id}.trim_leading_attachment_site.keep.bam"
+        reject_bam = "${meta.id}.trim_leading_attachment_site.reject.bam"
+        full_site_bam = null
+        metric_tsv = "${meta.id}.trim_leading_attachment_site.metrics.tsv"
+        summary_json = "${meta.id}.trim_leading_attachment_site.summary.json"
+        def full_site_opt = ""
+        if (params.keep_full_sites) {
+            full_site_opt = "--keep-full-sites"
+        } else {
+            full_site_bam = "${meta.id}.trim_leading_attachment_site.full_sites.bam"
+            full_site_opt = "--full-site-bam ${full_site_bam}"
+        }
         """
         tomebio-tools cryptic-seq trim-leading-attachment-site \
             --in-bam "${bam}" \
             --keep-bam "${keep_bam}" \
             --reject-bam "${reject_bam}" \
             --out-metrics "${metric_tsv}" \
+            --out-summary "${summary_json}" \
             --attachment-site ${meta.attachmentSites.join(' ')} \
-            --max-mismatches ${params.trim_att_max_mismatches}
+            --max-mismatches ${params.trim_att_max_mismatches} \
+            ${full_site_opt}
         """
 }
 
