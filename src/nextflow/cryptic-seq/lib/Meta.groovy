@@ -100,15 +100,24 @@ class Meta extends Nextflow{
             Path referenceDir = references.dir(referenceName)
             
             // resolve attachment sites
-            List<String> attachmentSites = null
+            List<String> attachmentSites = []
             if (values.containsKey(ATTACHMENT_SITES)) {
                 attachmentSites = values[ATTACHMENT_SITES].split(';')
             } else if (values.containsKey(ATTACHMENT_SITE_ID)) {
-                attachmentSites = values[ATTACHMENT_SITE_ID]
-                    .split(/[;,]/) // Split by either ',' or ';'
-                    .collect { attachmentSiteById[it.trim()] } // Trim blank spaces
-                if (attachmentSites.any { it == null }) {
-                    throw new RuntimeException("Null attachment site found ${attachmentSites}")
+                def missingKeys = []
+                (attachmentSites, missingKeys) = values[ATTACHMENT_SITE_ID]
+                    .split(/[;,]/)  // Split by either ',' or ';'
+                    .collect { key -> key.trim() }  // Trim whitespace from each key
+                    .inject([[], []]) { accu, key ->
+                        if (key in attachmentSiteById) {
+                            accu[0] << attachmentSiteById[key]
+                        } else {
+                            accu[1] << key
+                        }
+                        accu
+                    }
+                if (!missingKeys.empty) {
+                    throw new RuntimeException("No attachment site found for: ${missingKeys}")
                 }
             }
             if (!attachmentSites) {
