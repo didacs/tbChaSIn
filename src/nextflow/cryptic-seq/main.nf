@@ -19,6 +19,34 @@ validateParameters()
 // Print summary of supplied parameters
 log.info paramsSummaryLog(workflow)
 
+// Demultiplex BCL files into fastq
+// This is necessary for covaris data where
+// fastqs are not readily available in basespace
+process demultiplex {
+    label 'bcl_convert'
+    input:
+        path(run_dir)
+
+    output:
+        path("fastq/*_S[1-9]*_R?_00?.fastq.gz"), emit: fastq
+        path("fastq/Undetermined_S0_R?_00?.fastq.gz"), optional: true, emit: undetermined
+        path("fastq/Reports"), emit: reports
+        path("fastq/Logs"), emit: logs
+
+    script:
+    """
+    tomebio-tools cryptic-seq create_v2_samplesheet \
+        --v1_samplesheet ${run_dir}/SampleSheet.csv \
+        --v2_template ${params.v2_samplesheet_template} \
+        --ctb_id ${ctb_id} \
+        --output_file ${v2_samplesheet} &&
+    bcl-convert \
+        --output-directory fastq \
+        --bcl-input-directory ${run_dir} \
+        --sample-sheet ${v2_samplesheet}
+    """
+}
+
 // Collect pre-alignment sequencing quality control
 // Note: run as a single thread since FASTQC only parallelizes across files,
 // so adding threading doesn't help here.
