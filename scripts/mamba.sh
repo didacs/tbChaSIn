@@ -76,12 +76,7 @@ create_env() {
 }
 
 remove_all() {
-    if ${is_micromamba}; then
-        command=("${mamba}" remove --name "${env}" --all)
-    else
-        command=("${mamba}" env remove --name "${env}" --all)
-    fi
-    "${command[@]}"
+    ${mamba} remove --name "${env}" --all
 }
 
 activate_env() {
