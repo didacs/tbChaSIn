@@ -196,5 +196,5 @@ def create_v2_samplesheet(
 
     with open("v2_tmp.json", "w") as outfile:
         json.dump(v2_metasheet, outfile)
-    command = ["v2-samplesheet-maker", "v2_tmp.json", output_file]
+    command = ["v2-samplesheet-maker", "v2_tmp.json", str(output_file)]
     subprocess.check_call(command)
