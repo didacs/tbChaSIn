@@ -330,21 +330,23 @@ process clip_bam {
             -@ ${task.cpus} \
             -u \
             -O bam \
-            "${bam}" \
-        | fgbio \
+            -o temp.bam \
+            "${bam}" && \
+        fgbio \
             -Dsamjdk.use_async_io_read_samtools=true \
             -Duse_async_io_write_samtools=true \
             -XX:GCTimeLimit=50 \
             -XX:GCHeapFreeLimit=10 \
             -Xmx${task.memory.giga}g \
             ClipBam \
-            --input /dev/stdin \
+            --input temp.bam \
             --ref "${reference_fasta}" \
             --output "${clipped_bam}" \
             --metrics "${metric_tsv}" \
             --clipping-mode=Soft \
             --clip-bases-past-mate=true \
-            --sort-order=Coordinate
+            --sort-order=Coordinate && \
+        rm temp.bam
         """
 }
 
