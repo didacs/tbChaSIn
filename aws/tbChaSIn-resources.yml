@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  # Containers for nextflow pipeline
+  ECRFastp:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-fastp
+  ECRFastqc:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-fastqc
+  ECRFgbio:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-fgbio
+  ECRMultiqc:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-multiqc
+  ECRPicard:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-picard
+  ECRTools:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-tools
+
+  # Monolithic container for snakemake.
+  ECRSnakemake:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      ImageTagMutability: MUTABLE
+      RepositoryName: tbchasin-snakemake

@@ -203,9 +203,12 @@
       "type": "object",
       "description": "Resource options (Docker image, CPUs, memory, disk space, max runtime) for processes.",
       "properties": {
+        "docker_image_repo": {
+          "type": "string",
+          "hidden": true
+        },
         "docker_image_version": {
           "type": "string",
-          "default": "1.0",
           "hidden": true
         },
         "fastqc_image": {
@@ -225,6 +228,10 @@
           "hidden": true
         },
         "tools_image": {
+          "type": "string",
+          "hidden": true
+        },
+        "snakemake_cryptic_seq_image": {
           "type": "string",
           "hidden": true
         },

@@ -29,11 +29,11 @@ process fastqc {
 
     input:
         tuple val(meta), val(read_num), path(fq)
-    
+
     output:
         path html, emit: report_html
         path zip, emit: report_zip
-    
+
     script:
         def prefix = "${meta.uniqueId}.R${read_num}"
         html = "${prefix}_fastqc.html"
@@ -53,7 +53,7 @@ process fastq_to_ubam {
 
     output:
         tuple val(meta), path(ubam), emit: ubam
-    
+
     script:
         ubam = "${meta.uniqueId}.raw.bam"
         """
@@ -78,12 +78,12 @@ process trim_r1_tn5me {
 
     input:
         tuple val(meta), path(bam)
-    
+
     output:
         tuple val(meta), path(keep_bam), emit: keep_bam
         tuple val(meta), path(reject_bam), emit: reject_bam
         path metric_tsv, emit: metric_tsv
-    
+
     script:
         keep_bam = "${meta.uniqueId}.cryptic_seq.trim_for_tn5me.keep.bam"
         reject_bam = "${meta.uniqueId}.cryptic_seq.trim_for_tn5me.reject.bam"
@@ -105,14 +105,14 @@ process trim_leading_attachment_site {
 
     input:
         tuple val(meta), path(bam)
-    
+
     output:
         tuple val(meta), path(keep_bam), emit: keep_bam
         tuple val(meta), path(reject_bam), emit: reject_bam
         tuple val(meta), path(full_site_bam), emit: full_site_bam, optional: true
         path metric_tsv, emit: metric_tsv
         path summary_json, emit: summary_json
-    
+
     script:
         keep_bam = "${meta.id}.trim_leading_attachment_site.keep.bam"
         reject_bam = "${meta.id}.trim_leading_attachment_site.reject.bam"
@@ -146,12 +146,12 @@ process trim_r2_tn5me {
 
     input:
         tuple val(meta), path(bam)
-    
+
     output:
         tuple val(meta), path(keep_bam), emit: keep_bam
         tuple val(meta), path(reject_bam), emit: reject_bam
         path metric_tsv, emit: metric_tsv
-    
+
     script:
         keep_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_tn5me.keep.bam"
         reject_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_tn5me.reject.bam"
@@ -187,12 +187,12 @@ process trim_r2_adapter {
 
     input:
         tuple val(meta), path(bam)
-    
+
     output:
         tuple val(meta), path(keep_bam), emit: keep_bam
         tuple val(meta), path(reject_bam), emit: reject_bam
         path metric_tsv, emit: metric_tsv
-    
+
     script:
         keep_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_adapter.keep.bam"
         reject_bam = "${meta.uniqueId}.cryptic_seq.trim_r2_for_adapter.reject.bam"
@@ -230,10 +230,10 @@ process concatenate_bams {
 
     input:
         tuple val(meta), path(bams)
-    
+
     output:
         tuple val(meta), path(concatenated_bam), emit: concatenated_bam
-    
+
     shell:
         concatenated_bam = "${meta.uniqueId}.concatenated.bam"
         def bam_paths = bams.collect { it.toString() }.join(' ')
@@ -247,8 +247,8 @@ process concatenate_bams {
         """
 }
 
-// Aligns the reads in the unmapped BAM to the reference genome and sorts 
-// by coordinate. Important: runs with -Y so hard-clipping is not performed 
+// Aligns the reads in the unmapped BAM to the reference genome and sorts
+// by coordinate. Important: runs with -Y so hard-clipping is not performed
 // on supplementary alignments, but instead soft-clipping. This is important
 // to retain all bases for downstream analysis.
 process align {
@@ -257,11 +257,11 @@ process align {
     ext cpus: 8, memory: '16.GB'
 
     input:
-        // `reference_dir` is the directory that contains the reference FASTA 
+        // `reference_dir` is the directory that contains the reference FASTA
         // (bgzipped and indexed) and the BWA index. The directory name is expected
         // to be the same as the reference prefix, e.g. `/path/to/GRCh38/GRCh38.fasta.gz`.
         tuple val(meta), path(bam), path(reference_dir), val(reference_fasta_name)
-    
+
     output:
         tuple val(meta), path(mapped_bam), path(mapped_index), emit: mapped_bam
 
@@ -309,12 +309,12 @@ process clip_bam {
 
     input:
         tuple val(meta), path(bam), path(index), path(reference_fasta), path(reference_index)
-    
+
     output:
         // TODO: verify that ClipBam writes an index
         tuple val(meta), path(clipped_bam), path(clipped_index), emit: clipped_bam
         path metric_tsv, emit: metric_tsv
-    
+
     script:
         clipped_bam = "${meta.uniqueId}.clipped.bam"
         clipped_index = "${meta.uniqueId}.clipped.bai"
@@ -356,7 +356,7 @@ process copy_umi_from_read_name {
 
     input:
         tuple val(meta), path(bam), path(index)
-    
+
     output:
         tuple val(meta), path(bam_with_rx), path(index_with_rx), emit: bam_with_rx
 
@@ -365,7 +365,7 @@ process copy_umi_from_read_name {
         index_with_rx = "${meta.uniqueId}.umi_from_read_name.bai"
         def total_mem_gb = task.memory.giga
         // TODO: make configurable
-        def fgbio_mem_gb = total_mem_gb >= 10 ? 
+        def fgbio_mem_gb = total_mem_gb >= 10 ?
             Math.round(total_mem_gb * 0.8) : [total_mem_gb - 1, 1].max()
         """
         fgbio \
@@ -387,12 +387,12 @@ process mark_duplicates {
 
     input:
         tuple val(meta), path(bam), path(index)
-    
+
     output:
         // TODO: the Snakemake rule outputs the temp dir - is that necessary?
         tuple val(meta), path(deduped_bam), path(deduped_index), emit: deduped_bam
         path metric_txt, emit: metric_txt
-    
+
     script:
         deduped_bam = "${meta.uniqueId}.deduped.bam"
         deduped_index = "${meta.uniqueId}.deduped.bai"
@@ -431,10 +431,10 @@ process collect_alignment_summary_metrics {
 
     input:
         tuple val(meta), path(bam), path(index), path(reference_fasta), path(reference_index)
-    
+
     output:
-        path metric_txt, emit: metric_txt 
-    
+        path metric_txt, emit: metric_txt
+
     script:
         metric_txt = "${meta.uniqueId}.alignment_summary_metrics.txt"
         def total_mem_gb = task.memory.giga
@@ -464,10 +464,10 @@ process collect_multiple_metrics {
 
     input:
         tuple val(meta), path(bam), path(index), path(reference_fasta), path(reference_index)
-    
+
     output:
-        path metric_txt, emit: metric_txt 
-    
+        path metric_txt, emit: metric_txt
+
     script:
         metric_txt = "${meta.uniqueId}.quality_yield_metrics.txt"
         def total_mem_gb = task.memory.giga
@@ -510,7 +510,7 @@ process multiqc {
 
     output:
         path report, emit: report
-    
+
     script:
         report = "sequencing_quality_report.html"
         """
@@ -526,10 +526,10 @@ process find_sites {
 
     input:
         tuple val(meta), path(bam)
-    
+
     output:
         tuple val(meta), path(sites_txt), emit: sites_txt
-    
+
     script:
         sites_txt = "${meta.uniqueId}.sites.txt"
         // The sorting step will complete before find-sites runs, so we can
@@ -559,10 +559,10 @@ process collate_sites {
         val meta
         // list of all sites files
         path sites_txt
-    
+
     output:
         path collated_sites_txt, emit: collated_sites_txt
-    
+
     script:
         def meta_json = Meta.toCollateJson(meta)
         def prefix = "sites"
@@ -593,14 +593,14 @@ process annotate_sites {
         path gene_set_gtfs, stageAs: 'references/*'
         // the name of the fasta to use
         tuple path(match_reference_dir), val(match_fasta_name)
-    
+
     output:
         path annotated_sites_xlsx, emit: annotated_sites_xlsx
 
     script:
         def meta_json = Meta.toAnnotateJson(meta)
         def match_reference = "${match_reference_dir}/${match_fasta_name}"
-        annotated_sites_xlsx = "sites.annotated.xlsx" 
+        annotated_sites_xlsx = "sites.annotated.xlsx"
         """
         printf '${meta_json}' > sample_metadata.json
         tomebio-tools cryptic-seq annotate-sites \
@@ -615,7 +615,7 @@ process annotate_sites {
 // Native Nextflow workflow.
 workflow cryptic_seq {
     prepare_metasheet()
-    
+
     attachment_sites = null
     if (params.attachment_sites != null) {
         attachment_sites = file(params.attachment_sites)
@@ -633,7 +633,7 @@ workflow cryptic_seq {
         .map { references, annotation_reference ->
             References.load(references, annotation_reference)
         }
-    
+
     // Parse the metasheet into one `Meta` object per sample. We also
     // need to pass in the file with the references mapping, so we need
     // to first concatenate the channels.
@@ -678,7 +678,7 @@ workflow cryptic_seq {
         paired_input = sample_meta
             .map { meta -> tuple(meta, meta.fq1, meta.fq2) }
     }
-    
+
     fastq_to_ubam(paired_input)
 
     if (params.trim_Tn5) {
@@ -711,7 +711,7 @@ workflow cryptic_seq {
     } else {
         final_ubam = trim_ubam_r2
     }
-    
+
     align_input = final_ubam.map { meta, bam ->
         tuple(meta, bam, meta.referenceDir, meta.referenceFastaName)
     }
@@ -736,7 +736,7 @@ workflow cryptic_seq {
     }
     collect_alignment_summary_metrics(metrics_input)
     collect_multiple_metrics(metrics_input)
-    
+
     multiqc_input = channel.empty().mix(
         fastqc.out.report_html,
         fastqc.out.report_zip,
@@ -750,7 +750,7 @@ workflow cryptic_seq {
     find_sites(find_sites_input)
 
     aggregate_input = find_sites.out.sites_txt
-        .multiMap { meta, sites_txt -> 
+        .multiMap { meta, sites_txt ->
             meta: meta
             sites: sites_txt
         }
@@ -780,7 +780,7 @@ workflow cryptic_seq {
 
 process snakemake_pipeline {
     ext cpus: 8, memory: '16.GB'
-    
+
     input:
         // the output prefix
         val prefix
@@ -807,7 +807,7 @@ process snakemake_pipeline {
         path data_dir, emit: data_dir
         path 'logs', emit: log_dir
         path 'sequencing_quality_report_data', emit: report_data_dir
-    
+
     script:
         sample_config = "${prefix}.yml"
         data_dir = "${prefix}_output"
@@ -826,7 +826,7 @@ process snakemake_pipeline {
         if (params.default_attachment_site != null) {
             default_attachment_site_opt = "--default-attachment-site \"${params.default_attachment_site}\""
         }
-        
+
         def global_config_opt = ""
         if (global_config != []) {
             global_config_opt = "--config \"${global_config}\""
@@ -858,7 +858,7 @@ process snakemake_pipeline {
         if (params.read_structure_r2 != null) {
             read_structure_r2_opt = "--read-structure-r2 ${params.read_structure_r2}"
         }
-        
+
         """
         # create the config file from the metasheet
         tomebio-tools cryptic-seq create-config-from-metasheet \
@@ -870,7 +870,7 @@ process snakemake_pipeline {
             ${default_attachment_site_opt} \
             --output-file "${sample_config}" \
             --groups-file "${prefix}.groups.txt"
-        
+
         # run the pipeline
         cryptic-seq run \
             ${global_config_opt} \
@@ -883,7 +883,7 @@ process snakemake_pipeline {
             --config-yml "${sample_config}" \
             --cores ${task.cpus} \
             --directory .
-        
+
         # move group data directories into a subdirectory so we don't have to
         # know how they are named to output them
         mkdir ${data_dir}
@@ -916,7 +916,7 @@ workflow snakemake_wrapper {
     if (params.global_config != null) {
         global_config = file(params.global_config)
     }
-    
+
     // run snakemake pipeline
     snakemake_pipeline(
         prefix,
@@ -933,15 +933,15 @@ workflow snakemake_wrapper {
 process metasheet_from_benchling {
     label 'tools'
     label 'global'
-    secret 'WAREHOUSE_USERNAME'
-    secret 'WAREHOUSE_PASSWORD'
+    secret 'TBCHASIN_WAREHOUSE_USERNAME'
+    secret 'TBCHASIN_WAREHOUSE_PASSWORD'
 
     input:
         path genomes_json
-    
+
     output:
         path metasheet
-    
+
     script:
         def prefix = params.prefix ?: "metasheet"
         metasheet = "${prefix}.txt"
@@ -962,9 +962,9 @@ process metasheet_from_benchling {
         """
 }
 
-// Given a metasheet, an optional root folder for references, and an optional 
+// Given a metasheet, an optional root folder for references, and an optional
 // mapping between keys used in the metasheet ref_dir column and relative or
-// absolute paths, returns a list of paths to the unique references and an 
+// absolute paths, returns a list of paths to the unique references and an
 // updated metasheet with the reference file name in the ref_dir column.
 process resolve_references {
     label 'tools'
@@ -973,12 +973,12 @@ process resolve_references {
     input:
         path metasheet
         path references_json
-    
+
     output:
         path updated_metasheet, emit: metasheet
         path updated_references, emit: references
         path annotation_reference, emit: annotation
-    
+
     script:
         def prefix = params.prefix ?: metasheet.simpleName
         updated_metasheet = "${prefix}.updated.txt"
@@ -1036,7 +1036,7 @@ workflow prepare_metasheet {
         // update metasheet with reference name, and extract unique references
         // to stage in the snakemake process
         resolve_references(metasheet, references_json)
-    
+
     emit:
         prefix = metasheet.simpleName
         metasheet = resolve_references.out.metasheet
