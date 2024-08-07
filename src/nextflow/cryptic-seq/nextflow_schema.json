@@ -3,7 +3,7 @@
   "$id": "https://raw.githubusercontent.com/tomebio/tbChaSIn/nextflow_schema.json",
   "description": "Schema for the Cryptic-seq nextflow workflow",
   "type": "object",
-  "$defs": {
+  "defs": {
     "common": {
       "title": "Common options",
       "type": "object",
@@ -255,16 +255,16 @@
   },
   "allOf": [
     {
-      "$ref": "#/$defs/common"
+      "$ref": "#/defs/common"
     },
     {
-      "$ref": "#/$defs/nextflow"
+      "$ref": "#/defs/nextflow"
     },
     {
-      "$ref": "#/$defs/snakemake"
+      "$ref": "#/defs/snakemake"
     },
     {
-      "$ref": "#/$defs/resources"
+      "$ref": "#/defs/resources"
     }
   ]
 }
