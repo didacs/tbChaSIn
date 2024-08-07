@@ -8,4 +8,4 @@ aws [--profile <profile>] cloudformation deploy --stack-name tbChaSIn-ECR-reposi
 
 Update the Cloudformation stack by using the AWS console and uploading the updated CFN template.
 
-> NB: Ynfortunately, the `aws cloudformation update-stack` command can only take template URLs in S3.
+> NB: Unfortunately, the `aws cloudformation update-stack` command can only take template URLs in S3.
