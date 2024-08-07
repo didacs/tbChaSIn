@@ -1,9 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/tomebio/tbChaSIn/nextflow_schema.json",
   "description": "Schema for the Cryptic-seq nextflow workflow",
   "type": "object",
-  "definitions": {
+  "$defs": {
     "common": {
       "title": "Common options",
       "type": "object",
@@ -255,16 +255,16 @@
   },
   "allOf": [
     {
-      "$ref": "#/definitions/common"
+      "$ref": "#/$defs/common"
     },
     {
-      "$ref": "#/definitions/nextflow"
+      "$ref": "#/$defs/nextflow"
     },
     {
-      "$ref": "#/definitions/snakemake"
+      "$ref": "#/$defs/snakemake"
     },
     {
-      "$ref": "#/definitions/resources"
+      "$ref": "#/$defs/resources"
     }
   ]
 }
