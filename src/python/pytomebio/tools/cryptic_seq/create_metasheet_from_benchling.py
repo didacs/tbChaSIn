@@ -20,7 +20,7 @@ ENV_WAREHOUSE_PORT = "TBCHASIN_WAREHOUSE_PORT"
 ENV_WAREHOUSE_DBNAME = "TBCHASIN_WAREHOUSE_DBNAME"
 ENV_WAREHOUSE_SSLMODE = "TBCHASIN_WAREHOUSE_SSLMODE"
 
-# NB: should be unset, or properly set in container or execution environment
+# NB: This env variable should be unset, or properly set in container or execution environment
 ENV_WAREHOUSE_SSLROOTCERT = "WAREHOUSE_SSLROOTCERT"
 
 SSLMODE_CA = "verify-ca"
