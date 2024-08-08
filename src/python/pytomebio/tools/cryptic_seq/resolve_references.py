@@ -46,6 +46,9 @@ def resolve_reference(folder_path: str, root: Optional[str] = None) -> str:
     relative to the working directory. Returns the absolute path to the reference folder. Raises an
     exception if an absolute path cannot be resolved.
     """
+    if folder_path.startswith("s3://"):
+        return _as_folder(folder_path)
+
     if root is None:
         return _as_folder(resolve_local_path(Path(folder_path)))
     else:

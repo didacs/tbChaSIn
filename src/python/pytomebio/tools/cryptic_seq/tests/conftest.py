@@ -23,3 +23,10 @@ def references() -> Dict[str, str]:
         "GRCh38/hg38": "GRCh38/GRCh38.p14/GRCh38.p14.fasta.gz",
         "GRCh37/hg37": "foo/bar/GRCh37/hg19/",
     }
+
+@pytest.fixture
+def s3_references() -> Dict[str, str]:
+    return {
+        "GRCh38/hg38": "s3://mock_bucket/GRCh38/GRCh38.p14/GRCh38.p14.fasta.gz",
+        "GRCh37/hg37": "s3://mock_bucket/foo/bar/GRCh37/hg19/",
+    }

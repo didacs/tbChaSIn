@@ -77,10 +77,14 @@ def warehouse_connect(
     sslmode: Optional[str] = None,
     sslrootcert: Optional[str] = None,
 ) -> Connection:
+
     if username is None:
+        assert ENV_WAREHOUSE_USERNAME in os.environ
         username = os.getenv(ENV_WAREHOUSE_USERNAME)
     if password is None:
+        assert ENV_WAREHOUSE_PASSWORD in os.environ
         password = os.getenv(ENV_WAREHOUSE_PASSWORD)
+
     if host is None:
         host = os.getenv(ENV_WAREHOUSE_HOST, DEFAULT_WAREHOUSE_HOST)
     if port is None:

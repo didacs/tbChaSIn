@@ -20,7 +20,7 @@ class References extends Nextflow {
         Map<String, Path> references = jsonSlurper
             .parse(json)
             .collectEntries { name, path -> [name, file(path)] }
-        
+
         return new References(references, annotationName)
     }
 
