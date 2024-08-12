@@ -41,6 +41,9 @@ def fetch_sequence(
         else x["position"] - attB_half_site_len,
         axis=1,
     )
+    # for now let's just set start to 1 if negative
+    df["seq_start"] = df["seq_start"].apply(lambda x: 1 if x <= 0 else x)
+
     df["seq_end"] = df.apply(
         lambda x: x["position"] + 2 + attP_half_site_len
         if "attP" in x["attachment_site"]
