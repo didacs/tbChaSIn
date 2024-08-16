@@ -9,14 +9,14 @@
       "type": "object",
       "description": "Options apply to both the Native and Snakemake pipelines.",
       "properties": {
-        "prefix": {
-          "type": "string",
-          "description": "The prefix to use for output files."
-        },
         "output_dir": {
           "type": "string",
           "description": "Path to the output folder.",
           "format": "directory-path"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "The prefix to use for output files."
         }
       }
     },
@@ -72,8 +72,7 @@
           "type": "boolean",
           "description": "Whether to extract the UMI from the read name instead of the sequence."
         }
-      },
-      "required": ["fastq_dir"]
+      }
     },
     "reference_options": {
       "title": "Reference options",
@@ -88,17 +87,6 @@
           "dependentRequired": ["ctb_id"],
           "exists": true
         },
-        "default_genome": {
-          "type": "string",
-          "description": "The default genome to use if none is specified in the Metasheet.",
-          "dependentRequired": ["ctb_id"]
-        },
-        "references_dir": {
-          "type": "string",
-          "description": "Path to the root folder containing reference files.",
-          "format": "directory-path",
-          "exists": true
-        },
         "references_json": {
           "type": "string",
           "description": "Path to the JSON file with mappings from genome to reference.",
@@ -106,13 +94,24 @@
           "pattern": ".*.json$",
           "exists": true
         },
-        "default_reference": {
+        "references_dir": {
           "type": "string",
-          "description": "The default reference to use if none is specified in the Metasheet."
+          "description": "Path to the root folder containing reference files.",
+          "format": "directory-path",
+          "exists": true
         },
         "annotation_reference": {
           "type": "string",
           "description": "The name of, or path to, the reference to use when searching for exact site matches. Defaults to the default reference."
+        },
+        "default_genome": {
+          "type": "string",
+          "description": "The default genome to use if none is specified in the Metasheet.",
+          "dependentRequired": ["ctb_id"]
+        },
+        "default_reference": {
+          "type": "string",
+          "description": "The default reference to use if none is specified in the Metasheet."
         }
       }
     },
@@ -140,6 +139,15 @@
       "type": "object",
       "description": "Options apply to both the Native and Snakemake pipelines.",
       "properties": {
+        "keep_full_sites": {
+          "type": "boolean",
+          "description": "Whether to keep reads with the full attachment site in the BAM file when trimming."
+        },
+        "trim_att_max_mismatches": {
+          "type": "integer",
+          "description": "The maximum number of mismatches to allow when trimming attachment sites.",
+          "default": 4
+        },
         "trim_Tn5": {
           "type": "boolean",
           "description": "Whether to trim R1 Tn5 mosaic end."
@@ -148,11 +156,6 @@
           "type": "integer",
           "description": "The maximum number of mismatches to allow when trimming Tn5 adapters.",
           "default": 1
-        },
-        "trim_att_max_mismatches": {
-          "type": "integer",
-          "description": "The maximum number of mismatches to allow when trimming attachment sites.",
-          "default": 4
         },
         "trim_Tn5_r2": {
           "type": "boolean",
@@ -189,23 +192,6 @@
           "type": "integer",
           "description": "The minimum length of the R2 sequence after trimming to keep the read pair.",
           "default": 25
-        },
-        "keep_full_sites": {
-          "type": "boolean",
-          "description": "Whether to keep reads with the full attachment site in the BAM file when trimming."
-        }
-      }
-    },
-    "common_options": {
-      "title": "Common options",
-      "type": "object",
-      "description": "Options that apply to both the Native and Snakemake pipelines.",
-      "properties": {
-        "help": {
-          "type": "boolean",
-          "description": "Display help text.",
-          "fa_icon": "fas fa-question-circle",
-          "hidden": true
         }
       }
     },
@@ -283,9 +269,6 @@
       "$ref": "#/definitions/trimming_options"
     },
     {
-      "$ref": "#/definitions/common_options"
-    },
-    {
       "$ref": "#/definitions/nextflow_options"
     },
     {
@@ -294,5 +277,13 @@
     {
       "$ref": "#/definitions/process_resource_options"
     }
-  ]
+  ],
+  "properties": {
+    "help": {
+      "type": "boolean",
+      "description": "Display help text.",
+      "fa_icon": "fas fa-question-circle",
+      "hidden": true
+    }
+  }
 }
