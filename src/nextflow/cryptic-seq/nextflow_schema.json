@@ -4,10 +4,26 @@
   "description": "Schema for the Cryptic-seq nextflow workflow",
   "type": "object",
   "definitions": {
-    "common": {
-      "title": "Common options",
+    "output_options": {
+      "title": "Output options",
       "type": "object",
-      "description": "Options that apply to both the Native and Snakemake pipelines.",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "description": "The prefix to use for output files."
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Path to the output folder.",
+          "format": "directory-path"
+        }
+      }
+    },
+    "input_options": {
+      "title": "Input options",
+      "type": "object",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
       "properties": {
         "metasheet": {
           "type": "string",
@@ -20,6 +36,50 @@
           "type": "string",
           "description": "Benchling CTB ID of the experiment."
         },
+        "fastq_dir": {
+          "type": "string",
+          "description": "Path to the root folder containing FASTQ files.",
+          "format": "directory-path",
+          "exists": true
+        },
+        "fastq_name_pattern": {
+          "type": "string",
+          "description": "The pattern used to match FASTQ files. May contain '${var}' placeholders, where 'var' is any column name from the metasheet, or 'read' for the read number (1 or 2)."
+        },
+        "verify_files": {
+          "type": "boolean",
+          "description": "Whether to verify that reference and FASTQ files exist when loading data from the metasheet."
+        }
+      },
+      "required": ["fastq_dir"]
+    },
+    "input_read_specification": {
+      "title": "Input read specification",
+      "type": "object",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "properties": {
+        "read_structure_r1": {
+          "type": "string",
+          "description": "The read structure for R1.",
+          "default": "11M+T"
+        },
+        "read_structure_r2": {
+          "type": "string",
+          "description": "The read structure for R2.",
+          "default": "+T"
+        },
+        "umi_from_read_name": {
+          "type": "boolean",
+          "description": "Whether to extract the UMI from the read name instead of the sequence."
+        }
+      },
+      "required": ["fastq_dir"]
+    },
+    "reference_options": {
+      "title": "Reference options",
+      "type": "object",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "properties": {
         "genomes_json": {
           "type": "string",
           "description": "Path to the JSON file with mappings from species to genome.",
@@ -32,28 +92,6 @@
           "type": "string",
           "description": "The default genome to use if none is specified in the Metasheet.",
           "dependentRequired": ["ctb_id"]
-        },
-        "fastq_dir": {
-          "type": "string",
-          "description": "Path to the root folder containing FASTQ files.",
-          "format": "directory-path",
-          "exists": true
-        },
-        "fastq_name_pattern": {
-          "type": "string",
-          "description": "The pattern used to match FASTQ files. May contain '${var}' placeholders, where 'var' is any column name from the metasheet, or 'read' for the read number (1 or 2)."
-        },
-        "attachment_sites": {
-          "type": "string",
-          "description": "Path to the JSON file with mappings from Benchling PL ID to attachment site.",
-          "format": "file-path",
-          "pattern": ".*.json$",
-          "exists": true
-        },
-        "default_attachment_site": {
-          "type": "string",
-          "description": "The default attachment site(s) to use if none is specified in the Metasheet.",
-          "pattern": "^\\S+$"
         },
         "references_dir": {
           "type": "string",
@@ -75,21 +113,33 @@
         "annotation_reference": {
           "type": "string",
           "description": "The name of, or path to, the reference to use when searching for exact site matches. Defaults to the default reference."
-        },
-        "verify_files": {
-          "type": "boolean",
-          "description": "Whether to verify that reference and FASTQ files exist when loading data from the metasheet.",
-          "default": false
-        },
-        "prefix": {
+        }
+      }
+    },
+    "attachment_site_options": {
+      "title": "Attachment site options",
+      "type": "object",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "properties": {
+        "attachment_sites": {
           "type": "string",
-          "description": "The prefix to use for output files."
+          "description": "Path to the JSON file with mappings from Benchling PL ID to attachment site.",
+          "format": "file-path",
+          "pattern": ".*.json$",
+          "exists": true
         },
-        "output_dir": {
+        "default_attachment_site": {
           "type": "string",
-          "description": "Path to the output folder.",
-          "format": "directory-path"
-        },
+          "description": "The default attachment site(s) to use if none is specified in the Metasheet.",
+          "pattern": "^\\S+$"
+        }
+      }
+    },
+    "trimming_options": {
+      "title": "Trimming options",
+      "type": "object",
+      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "properties": {
         "trim_Tn5": {
           "type": "boolean",
           "description": "Whether to trim R1 Tn5 mosaic end."
@@ -103,16 +153,6 @@
           "type": "integer",
           "description": "The maximum number of mismatches to allow when trimming attachment sites.",
           "default": 4
-        },
-        "read_structure_r1": {
-          "type": "string",
-          "description": "The read structure for R1.",
-          "default": "11M+T"
-        },
-        "read_structure_r2": {
-          "type": "string",
-          "description": "The read structure for R2.",
-          "default": "+T"
         },
         "trim_Tn5_r2": {
           "type": "boolean",
@@ -152,22 +192,22 @@
         },
         "keep_full_sites": {
           "type": "boolean",
-          "description": "Whether to keep reads with the full attachment site in the BAM file when trimming.",
-          "default": false
-        },
-        "umi_from_read_name": {
-          "type": "boolean",
-          "description": "Whether to extract the UMI from the read name instead of the sequence.",
-          "default": false
-        },
+          "description": "Whether to keep reads with the full attachment site in the BAM file when trimming."
+        }
+      }
+    },
+    "common": {
+      "title": "Common options",
+      "type": "object",
+      "description": "Options that apply to both the Native and Snakemake pipelines.",
+      "properties": {
         "help": {
           "type": "boolean",
           "description": "Display help text.",
           "fa_icon": "fas fa-question-circle",
           "hidden": true
         }
-      },
-      "required": ["fastq_dir"]
+      }
     },
     "nextflow": {
       "title": "Nextflow options",
@@ -188,14 +228,13 @@
         "snakemake": {
           "type": "boolean",
           "description": "Use the Snakemake workflow.",
-          "default": false,
           "hidden": true
         },
         "global_config": {
           "type": "string",
           "description": "Path to the Snakemake global config file.",
           "format": "file-path",
-          "pattern": ".*.ya?ml$",
+          "pattern": "^\\S+\\.(yaml|yml)$",
           "exists": true,
           "hidden": true
         }
