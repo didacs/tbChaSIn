@@ -196,7 +196,7 @@
         }
       }
     },
-    "common": {
+    "common_options": {
       "title": "Common options",
       "type": "object",
       "description": "Options that apply to both the Native and Snakemake pipelines.",
@@ -209,7 +209,7 @@
         }
       }
     },
-    "nextflow": {
+    "nextflow_options": {
       "title": "Nextflow options",
       "type": "object",
       "description": "Options specific to the Nextflow workflow",
@@ -220,7 +220,7 @@
         }
       }
     },
-    "snakemake": {
+    "snakemake_options": {
       "title": "Snakemake options",
       "type": "object",
       "description": "Options specific to the Snakemake workflow",
@@ -240,7 +240,7 @@
         }
       }
     },
-    "resources": {
+    "process_resource_options": {
       "title": "Process resource options",
       "type": "object",
       "description": "Resource options (Docker image, CPUs, memory, disk space, max runtime) for processes.",
@@ -265,16 +265,34 @@
   },
   "allOf": [
     {
-      "$ref": "#/definitions/common"
+      "$ref": "#/definitions/output_options"
     },
     {
-      "$ref": "#/definitions/nextflow"
+      "$ref": "#/definitions/input_options"
     },
     {
-      "$ref": "#/definitions/snakemake"
+      "$ref": "#/definitions/input_read_specification"
     },
     {
-      "$ref": "#/definitions/resources"
+      "$ref": "#/definitions/reference_options"
+    },
+    {
+      "$ref": "#/definitions/attachment_site_options"
+    },
+    {
+      "$ref": "#/definitions/trimming_options"
+    },
+    {
+      "$ref": "#/definitions/common_options"
+    },
+    {
+      "$ref": "#/definitions/nextflow_options"
+    },
+    {
+      "$ref": "#/definitions/snakemake_options"
+    },
+    {
+      "$ref": "#/definitions/process_resource_options"
     }
   ]
 }
