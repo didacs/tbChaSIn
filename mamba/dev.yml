@@ -13,6 +13,7 @@ dependencies:
   - nextflow=24.04.2
   - pytest>=8.0.0
   - pytest-workflow=2.1.0
+  - nf-core=2.14.1
   # Snakemake
   - snakemake-minimal=7.32.4
   - git=2.40.1 # required by snk

@@ -34,7 +34,7 @@ confs="${root}/mamba"
 
 # Source variables from pipeline.env
 # shellcheck disable=SC1091
-source "${root}/pipeline.env"
+source "${root}/src/nextflow/cryptic-seq/pipeline.env"
 # shellcheck disable=SC2153
 ecr_repo_root="$ECR_REPO_ROOT"
 version="$PIPELINE_VERSION"

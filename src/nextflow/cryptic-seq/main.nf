@@ -5,7 +5,7 @@ include {
     validateParameters;
     paramsHelp;
     paramsSummaryLog;
-} from 'plugin/nf-schema'
+} from 'plugin/nf-validation'
 
 // Print help message, supply typical command line usage for the pipeline
 if (params.help) {

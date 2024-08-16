@@ -1,9 +1,9 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "https://raw.githubusercontent.com/tomebio/tbChaSIn/nextflow_schema.json",
   "description": "Schema for the Cryptic-seq nextflow workflow",
   "type": "object",
-  "defs": {
+  "definitions": {
     "common": {
       "title": "Common options",
       "type": "object",
@@ -25,11 +25,13 @@
           "description": "Path to the JSON file with mappings from species to genome.",
           "format": "file-path",
           "pattern": ".*.json$",
+          "dependentRequired": ["ctb_id"],
           "exists": true
         },
         "default_genome": {
           "type": "string",
-          "description": "The default genome to use if none is specified in the Metasheet."
+          "description": "The default genome to use if none is specified in the Metasheet.",
+          "dependentRequired": ["ctb_id"]
         },
         "fastq_dir": {
           "type": "string",
@@ -43,7 +45,7 @@
         },
         "attachment_sites": {
           "type": "string",
-          "description": "Path to the JSON file with mappings from Bencling PL ID to attachment site.",
+          "description": "Path to the JSON file with mappings from Benchling PL ID to attachment site.",
           "format": "file-path",
           "pattern": ".*.json$",
           "exists": true
@@ -94,23 +96,28 @@
         },
         "trim_Tn5_max_mismatches": {
           "type": "integer",
-          "description": "The maximum number of mismatches to allow when trimming Tn5 adapters."
+          "description": "The maximum number of mismatches to allow when trimming Tn5 adapters.",
+          "default": 1
         },
         "trim_att_max_mismatches": {
           "type": "integer",
-          "description": "The maximum number of mismatches to allow when trimming attachment sites."
+          "description": "The maximum number of mismatches to allow when trimming attachment sites.",
+          "default": 4
         },
         "read_structure_r1": {
           "type": "string",
-          "description": "The read structure for R1."
+          "description": "The read structure for R1.",
+          "default": "11M+T"
         },
         "read_structure_r2": {
           "type": "string",
-          "description": "The read structure for R2."
+          "description": "The read structure for R2.",
+          "default": "+T"
         },
         "trim_Tn5_r2": {
           "type": "boolean",
-          "description": "Whether to trim R2 Tn5 mosaic end."
+          "description": "Whether to trim R2 Tn5 mosaic end.",
+          "default": true
         },
         "trim_Tn5_r2_min_score": {
           "type": "integer",
@@ -160,11 +167,7 @@
           "hidden": true
         }
       },
-      "required": ["fastq_dir"],
-      "dependentRequired": {
-        "genomes_json": ["ctb_id"],
-        "default_genome": ["ctb_id"]
-      }
+      "required": ["fastq_dir"]
     },
     "nextflow": {
       "title": "Nextflow options",
@@ -203,38 +206,6 @@
       "type": "object",
       "description": "Resource options (Docker image, CPUs, memory, disk space, max runtime) for processes.",
       "properties": {
-        "docker_image_repo": {
-          "type": "string",
-          "hidden": true
-        },
-        "docker_image_version": {
-          "type": "string",
-          "hidden": true
-        },
-        "fastqc_image": {
-          "type": "string",
-          "hidden": true
-        },
-        "multiqc_image": {
-          "type": "string",
-          "hidden": true
-        },
-        "picard_image": {
-          "type": "string",
-          "hidden": true
-        },
-        "fgbio_image": {
-          "type": "string",
-          "hidden": true
-        },
-        "tools_image": {
-          "type": "string",
-          "hidden": true
-        },
-        "snakemake_cryptic_seq_image": {
-          "type": "string",
-          "hidden": true
-        },
         "default_resources": {
           "type": "string",
           "default": "1;4.GB;100.GB;1.h",
@@ -255,16 +226,16 @@
   },
   "allOf": [
     {
-      "$ref": "#/defs/common"
+      "$ref": "#/definitions/common"
     },
     {
-      "$ref": "#/defs/nextflow"
+      "$ref": "#/definitions/nextflow"
     },
     {
-      "$ref": "#/defs/snakemake"
+      "$ref": "#/definitions/snakemake"
     },
     {
-      "$ref": "#/defs/resources"
+      "$ref": "#/definitions/resources"
     }
   ]
 }
