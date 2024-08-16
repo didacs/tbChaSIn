@@ -1,4 +1,5 @@
 #!/usr/bin/sh
+# shellcheck disable=SC3040
 set -euo pipefail
 
 usage() {
@@ -24,7 +25,7 @@ done
 secret_names=$(aws ${aws_profile:+--profile $aws_profile} ${region:+--region $region} secretsmanager list-secrets | jq -r '.[] | .[] | .Name')
 
 for secret_name in $secret_names; do
-
+    # shellcheck disable=SC3010
     if [[ "$secret_name" =~ tower-.*\/TBCHASIN_.* ]]; then
 
         # shellcheck disable=SC3045
