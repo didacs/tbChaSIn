@@ -77,7 +77,6 @@ def warehouse_connect(
     sslmode: Optional[str] = None,
     sslrootcert: Optional[str] = None,
 ) -> Connection:
-
     if username is None:
         assert ENV_WAREHOUSE_USERNAME in os.environ
         username = os.getenv(ENV_WAREHOUSE_USERNAME)

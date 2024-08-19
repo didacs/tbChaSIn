@@ -24,6 +24,7 @@ def references() -> Dict[str, str]:
         "GRCh37/hg37": "foo/bar/GRCh37/hg19/",
     }
 
+
 @pytest.fixture
 def s3_references() -> Dict[str, str]:
     return {

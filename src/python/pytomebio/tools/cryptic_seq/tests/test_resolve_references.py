@@ -21,13 +21,12 @@ def test_resolve_references(datadir: Path, references: Dict[str, str]) -> None:
         "hg19": "/data/refs/foo/bar/GRCh37/hg19/",
     }
 
+
 def test_resolve_references_s3(datadir: Path, s3_references: Dict[str, str]) -> None:
     metasheet = datadir / "metasheet.xlsx"
     sample_df = read_metasheet(metasheet)
     parsed_references = {key: parse_reference(value) for key, value in s3_references.items()}
-    sample_df, unique_references = update_metasheet(
-        sample_df, reference_map=parsed_references
-    )
+    sample_df, unique_references = update_metasheet(sample_df, reference_map=parsed_references)
     refs = sample_df["reference"]
     assert all(refs[i] == "GRCh38.p14" for i in range(3))
     assert refs[3] == "hg19"
