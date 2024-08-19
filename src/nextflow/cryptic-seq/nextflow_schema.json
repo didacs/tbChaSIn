@@ -11,40 +11,41 @@
       "properties": {
         "output_dir": {
           "type": "string",
-          "description": "Path to the output folder.",
+          "description": "Path to the output folder. [Required]",
           "format": "directory-path"
         },
         "prefix": {
           "type": "string",
-          "description": "The prefix to use for output files."
+          "description": "The prefix to use for output files. [Optional]"
         }
-      }
+      },
+      "required": ["output_dir"]
     },
     "input_options": {
       "title": "Input options",
       "type": "object",
       "description": "Options apply to both the Native and Snakemake pipelines.",
       "properties": {
-        "metasheet": {
-          "type": "string",
-          "description": "Path to the Metasheet file.",
-          "format": "file-path",
-          "pattern": ".*.(txt|tsv|xls|xlsx)$",
-          "exists": true
-        },
-        "ctb_id": {
-          "type": "string",
-          "description": "Benchling CTB ID of the experiment."
-        },
         "fastq_dir": {
           "type": "string",
           "description": "Path to the root folder containing FASTQ files.",
           "format": "directory-path",
           "exists": true
         },
+        "metasheet": {
+          "type": "string",
+          "description": "Path to the Metasheet file. [Optional]",
+          "format": "file-path",
+          "pattern": ".*.(txt|tsv|xls|xlsx)$",
+          "exists": true
+        },
+        "ctb_id": {
+          "type": "string",
+          "description": "Benchling CTB ID of the experiment. [Optional]"
+        },
         "fastq_name_pattern": {
           "type": "string",
-          "description": "The pattern used to match FASTQ files. May contain '${var}' placeholders, where 'var' is any column name from the metasheet, or 'read' for the read number (1 or 2)."
+          "description": "The pattern used to match FASTQ files. May contain '${var}' placeholders, where 'var' is any column name from the metasheet, or 'read' for the read number (1 or 2). [Optional]"
         },
         "verify_files": {
           "type": "boolean",
@@ -60,12 +61,12 @@
       "properties": {
         "read_structure_r1": {
           "type": "string",
-          "description": "The read structure for R1.",
+          "description": "The read structure for R1. [Required for native workflow]",
           "default": "11M+T"
         },
         "read_structure_r2": {
           "type": "string",
-          "description": "The read structure for R2.",
+          "description": "The read structure for R2. [Required for native workflow]",
           "default": "+T"
         },
         "umi_from_read_name": {
@@ -81,7 +82,7 @@
       "properties": {
         "genomes_json": {
           "type": "string",
-          "description": "Path to the JSON file with mappings from species to genome.",
+          "description": "Path to the JSON file with mappings from species to genome. [Required if \"ctb_id\" is provided]",
           "format": "file-path",
           "pattern": ".*.json$",
           "dependentRequired": ["ctb_id"],
@@ -106,7 +107,7 @@
         },
         "default_genome": {
           "type": "string",
-          "description": "The default genome to use if none is specified in the Metasheet.",
+          "description": "The default genome to use if none is specified in the Metasheet. [Required if \"ctb_id\" is provided]",
           "dependentRequired": ["ctb_id"]
         },
         "default_reference": {
@@ -122,7 +123,7 @@
       "properties": {
         "attachment_sites": {
           "type": "string",
-          "description": "Path to the JSON file with mappings from Benchling PL ID to attachment site.",
+          "description": "Path to the JSON file with mappings from Benchling PL ID to attachment site, defaults to repository attachment-sites.json if none provided. [Optional]",
           "format": "file-path",
           "pattern": ".*.json$",
           "exists": true
@@ -137,7 +138,7 @@
     "trimming_options": {
       "title": "Trimming options",
       "type": "object",
-      "description": "Options apply to both the Native and Snakemake pipelines.",
+      "description": "Options apply to both the Native and Snakemake pipelines. R1 trimming options required for native (NextFlow) workflow. R2 trimming options are optional.",
       "properties": {
         "keep_full_sites": {
           "type": "boolean",
