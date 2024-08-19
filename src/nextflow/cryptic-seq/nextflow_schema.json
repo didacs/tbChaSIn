@@ -28,7 +28,7 @@
       "properties": {
         "fastq_dir": {
           "type": "string",
-          "description": "Path to the root folder containing FASTQ files.",
+          "description": "Path to the root folder containing FASTQ files. [Required]",
           "format": "directory-path",
           "exists": true
         },
