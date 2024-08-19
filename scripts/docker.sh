@@ -16,12 +16,15 @@ usage() {
 Usage: $0 [options] [name...]
 
 All images are built unless specific images are listed by name.
+Defaults to tagging images with "dev" ECR repo uri
 
 Optional:
     -s          Build the 'all-in-one' image for the snakemake pipeline
     -v VERSION  Version to use when tagging images
     -f          Force Docker to rebuild all images
     -m          Build image to run on ARM Mac
+    -p          Push images to ECR
+    -x          Tag images with "prod" ECR repo URI
 EOF
     # shellcheck disable=SC2188
     >&2
@@ -36,7 +39,6 @@ confs="${root}/mamba"
 # shellcheck disable=SC1091
 source "${root}/src/nextflow/cryptic-seq/pipeline.env"
 # shellcheck disable=SC2153
-ecr_repo_root="$ECR_REPO_ROOT"
 version="$PIPELINE_VERSION"
 # shellcheck disable=SC2153
 aws_region="$AWS_REGION"
@@ -45,17 +47,25 @@ snakemake=false
 rosetta_options=()
 force_option=""
 push=false
-while getopts "v:smfp" flag; do
+prod=false
+while getopts "v:smfpx" flag; do
     case "${flag}" in
     s) snakemake=true ;;
     v) version=${OPTARG} ;;
     m) rosetta_options=(--platform linux/amd64 --load) ;;
     f) force_option="--no-cache" ;;
     p) push=true ;;
+    x) prod=true ;;
     *) usage ;;
     esac
 done
 shift $((OPTIND - 1))
+
+if ${prod}; then
+    ecr_repo_root="$PROD_ECR_REPO_ROOT"
+else
+    ecr_repo_root="$DEV_ECR_REPO_ROOT"
+fi
 
 build_target() {
     docker build \

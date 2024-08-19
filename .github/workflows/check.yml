@@ -30,7 +30,7 @@ jobs:
       shell: micromamba-shell {0}
       run: |
         bash scripts/check.sh
-  
+
   workflow:
     runs-on: ubuntu-latest
     env:
@@ -41,6 +41,7 @@ jobs:
       uses: actions/checkout@v4
     # TODO: cache Docker images
     - name: Build Docker images
+      # NB: defaults to building images for "dev" profile.
       run: |
         bash scripts/docker.sh
     - uses: mamba-org/setup-micromamba@v1
@@ -70,7 +71,8 @@ jobs:
     - name: Run workflow
       shell: micromamba-shell {0}
       env:
-        PROFILES: local,linux
+        # Test with "dev" profile images
+        PROFILES: local,linux,dev
       run: |
         export REF_DIR="$(pwd)"
         cd src/nextflow/cryptic-seq

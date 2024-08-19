@@ -86,20 +86,23 @@
           "format": "file-path",
           "pattern": ".*.json$",
           "dependentRequired": ["ctb_id"],
-          "exists": true
+          "exists": true,
+          "default": "s3://tome-seqera-pipeline-assets/tbchasin/genomes.json"
         },
         "references_json": {
           "type": "string",
           "description": "Path to the JSON file with mappings from genome to reference.",
           "format": "file-path",
           "pattern": ".*.json$",
-          "exists": true
+          "exists": true,
+          "default": "s3://tome-seqera-pipeline-assets/tbchasin/references.json"
         },
         "references_dir": {
           "type": "string",
           "description": "Path to the root folder containing reference files.",
           "format": "directory-path",
-          "exists": true
+          "exists": true,
+          "default": "s3://tome-seqera-pipeline-assets/tbchasin/"
         },
         "annotation_reference": {
           "type": "string",

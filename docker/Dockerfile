@@ -67,12 +67,13 @@ ADD --chown=$MAMBA_USER:$MAMBA_USER \
 # Build tomebio-tools
 FROM tools-base as tools-build
 USER root
-RUN apt-get install -y build-essential
+RUN apt-get install -y build-essential zlib1g
+
 USER $MAMBA_USER
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./mamba/dev.yml .
 RUN micromamba install -y -n base -f dev.yml \
     && micromamba clean --all --yes \
-    && rm -Rf dev.yml 
+    && rm -Rf dev.yml
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ADD --chown=$MAMBA_USER:$MAMBA_USER https://install.python-poetry.org install-poetry.py
 RUN python3 install-poetry.py
@@ -90,7 +91,7 @@ RUN export pybedtools_version=$(poetry show pybedtools \
     && pip download --no-binary=:all: --no-deps pybedtools=="${pybedtools_version}" \
     && pip wheel --no-deps -w dist "pybedtools-${pybedtools_version}.tar.gz"
 # Build the wheel - do this last so we only have to re-run this
-# part when the code changes 
+# part when the code changes
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./src/python/ .
 RUN poetry build
 
