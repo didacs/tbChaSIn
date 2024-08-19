@@ -12,7 +12,8 @@
         "output_dir": {
           "type": "string",
           "description": "Path to the output folder. [Required]",
-          "format": "directory-path"
+          "format": "directory-path",
+          "default": "s3://tome-seqera-archive/tbchasin/"
         },
         "prefix": {
           "type": "string",
