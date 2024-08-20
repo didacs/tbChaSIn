@@ -205,15 +205,18 @@ The Cryptic-seq pipeline has been ported to Nextflow, and this is now the prefer
 Each process uses a single Docker image, but multiple processes can use the same image. Each environment configuration file in [mamba/](mamba/) corresponds to a Docker image. To build all the Docker images, run:
 
 ```console
-bash scripts/docker.sh [-m] [-v VERSION]
+bash scripts/docker.sh [-m] [-v VERSION] [-x] [-p]
 ```
 
 The `-m` option builds images that are compatible with an ARM Mac. The `-v` option specifies the version with which to tag the images, and must match the `docker_image_version` parameter in [nextflow.config](nextflow.config).
 
+The `-x` option tags images with "prod" (in production) image names.
+The `-p` option pushes tagged images to ECR.
+
 To build a specific image, run the following command, where `<target>` is the name of the environment configuration file without the `.yml` extension.
 
 ```console
-bash scripts/docker.sh [-m] [-v VERSION] <target>
+bash scripts/docker.sh [-m] [-v VERSION] [-x] <target>
 ```
 
 To be able to run the Snakemake version of the workflow, you'll need to build a single "monolithic" Docker image instead. Run the following from the root directory of the project:
@@ -265,6 +268,9 @@ nextflow run \
   [-with-report report.html] \
   # this option configures the pipeline for running locally
   -profile local \
+  # this option configures the pipeline to run with "prod" or "dev" docker images
+  # use "prod" if you are unsure which images to use.
+  -profile {dev|prod}
   # this option only required on ARM Mac
   [-profile rosetta] \
   # this option only required on linux systems where it is required to run docker as root
@@ -308,7 +314,7 @@ nextflow run \
   -c example.config \
   --fastq_dir my_fastq_dir
   --output_dir my_output_dir
-  -profile local
+  -profile local,prod
 ```
 
 ### Execution (Snakemake)
@@ -618,7 +624,9 @@ settings:
 
 *** Important ***: `ref_fasta` is the genome _with_ attD, while `genome_fasta` _does not_ contain attD.
 
-### Development
+---
+
+## Development
 
 #### Python toolkit
 
@@ -674,3 +682,36 @@ where `ref_dir` is the root directory for references.
 [miniforge-link]: https://github.com/conda-forge/miniforge
 [snk-link]: https://github.com/Wytamma/snk
 [benchling-link]: https://docs.benchling.com/docs/getting-started
+
+---
+
+### Cutting a new release and deploying to Seqera Platform
+
+To cut a new release of the pipeline to use on Seqera Platform, you must: update the pipeline metadata with the appropriate [semantic version](https://semver.org), update the pipeline's ECR images, and update the corresponding launch template(s) on Seqera Platform.
+
+To update the repository with a new semantic version:
+1. Bump the [semantic version](https://semver.org) of the pipeline in [src/nextflow/cryptic-seq/pipeline.env](src/nextflow/cryptic-seq/pipeline.env)
+The semver should _not_ have a leading "v".
+1. Merge the changes to `main`.
+1. Tag `main` with the same version and push the tag. I.e   `git tag -a "X.Y.Z"`, then `git push origin tag "X.Y.Z"`.
+1. Build and push prod or dev images using `scripts/docker.sh` with the `-p` option (with the `-x` version if pushing to production).
+
+To update launch templates in Seqera Platform workspace(s):
+1. Open the options drop-down to the right of "Launch", and click "Edit".
+1. Change the revision number to match git repository tag of desired release version.
+
+If there are any Nextflow secrets to update and expose to the pipeline, those secrets must be updated and/or added to the Seqera Platform workspace secrets.
+
+#### Cleaning up AWS secrets
+
+As of Seqera Platform v24.2.0 (Aug 20 2024), there is a bug where AWS secrets are not deleted (as described in the documentation) after pipeline termination (after a successful, cancelled, or failed run). For secret name `SECRETNAME` a run with ID `XYZ`, Seqera Platform writes a corresponding secret name `tower-XYZ/SECRETNAME` to AWS Secrets Manager.
+
+For convenience, we've included a script [`scripts/cleanup_secrets.sh`](scripts/cleanup_secrets.sh) that can be used to delete AWS secrets provisioned for this pipeline
+(matching `tower-*/TBCHASIN_*`).
+
+Running the following will prompt you to confirm deletion of each matching secret found in AWS Secrets Manager.
+```console
+bash scripts/cleanup_secrets.sh [-a aws_profile] [-r region]
+```
+
+Be careful to not delete secrets used for pipeline runs that are currently running and in progress.
