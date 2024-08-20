@@ -7,7 +7,7 @@ cat << EOF
 Usage: $0 [-a <aws profile> -r <region>]
 
 Deletes all secrets with 7 day recovery window for secrets that match "tower-.*\/TBCHASIN_.*".
-NB: Seqera Platform 24.2.0 prefixes secrets with "tower-<job_id>/" in AWS secretsmanager
+NB: Seqera Platform 24.2.0 prefixes secrets with "tower-<job_id>/" in AWS secretsmanager.
 
 EOF
 }
