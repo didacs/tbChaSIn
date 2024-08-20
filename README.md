@@ -683,6 +683,20 @@ where `ref_dir` is the root directory for references.
 [snk-link]: https://github.com/Wytamma/snk
 [benchling-link]: https://docs.benchling.com/docs/getting-started
 
+
+#### Updating and validating the nextflow schema
+
+In `src/nextflow/cryptic-seq`, run `nf-core schema lint` to validate that the nextflow schema is valid and compatible with Seqera Platform.
+
+Where possible, use `nf-core schema build` to update the schema.
+You may ignore warnings for mismatched defaults between the schema (`nexflow_config.json`) and the config (`nextflow.config`)  the following parameters that set defaults for "prod" launch template in `tomebio/tomebio-prod`.
+  - `genomes_json`
+  - `references_dir`
+  - `references_json`
+  - `output_dir`
+
+The schema is set up to provide convenient default values in the Seqera Platform Launch Template web-form in the "prod" workspace and Launch Template. The default values in the schema are not used when running `nextflow run ...`.
+
 ---
 
 ### Cutting a new release and deploying to Seqera Platform
