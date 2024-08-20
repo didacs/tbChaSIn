@@ -4,7 +4,7 @@ Tools and pipelines for various off-target detection assays:
 
 - CHANGE-Seq
 - Cryptic-Seq
-- Integration site mapping assay from Durant et al. 2022 
+- Integration site mapping assay from Durant et al. 2022
 
 <!---toc start-->
 - [tbChaSIn](#tbchasin)
@@ -205,7 +205,7 @@ The Cryptic-seq pipeline has been ported to Nextflow, and this is now the prefer
 Each process uses a single Docker image, but multiple processes can use the same image. Each environment configuration file in [mamba/](mamba/) corresponds to a Docker image. To build all the Docker images, run:
 
 ```console
-bash scripts/docker.sh [-m] [-v VERSION] 
+bash scripts/docker.sh [-m] [-v VERSION]
 ```
 
 The `-m` option builds images that are compatible with an ARM Mac. The `-v` option specifies the version with which to tag the images, and must match the `docker_image_version` parameter in [nextflow.config](nextflow.config).
@@ -268,7 +268,7 @@ nextflow run \
   # this option only required on ARM Mac
   [-profile rosetta] \
   # this option only required on linux systems where it is required to run docker as root
-  [-profile linux]  
+  [-profile linux]
   # this option causes the snakemake workflow to be run
   [-profile snakemake] \
   # this option provides the global config when running the snakemake workflow
@@ -354,8 +354,8 @@ The global parameters are specific to each workflow.
 
 The following steps are performed in the CHANGE-Seq pipeline:
 
-1. Convert FASTQ to BAM, trim and annotate the leading attachment sites.  Keep only read pairs where the left/right side 
-   of the same attachment site are found.  
+1. Convert FASTQ to BAM, trim and annotate the leading attachment sites.  Keep only read pairs where the left/right side
+   of the same attachment site are found.
 2. Search for the Tn5 mosaic end in the reads trimming it and all subsequent bases (due to short inserts).  All reads kept.
 3. Align the reads.
 4. Mark duplicates (no UMIs).
@@ -417,7 +417,7 @@ settings:
         replicate: 2
         fq1: /path/to/cryptic-seq/fastqs/HEK293c12_BxbI_attP_rep2_S26/HEK293c12_BxbI_attP_rep2_S26_L001_R1_001.fastq.gz
         fq2: /path/to/cryptic-seq/fastqs/HEK293c12_BxbI_attP_rep2_S26/HEK293c12_BxbI_attP_rep2_S26_L001_R2_001.fastq.gz
-      - name: HEK293c12_BxbI_attP_rep3_S27 
+      - name: HEK293c12_BxbI_attP_rep3_S27
         replicate: 3
         fq1: /path/to/cryptic-seq/fastqs/HEK293c12_BxbI_attP_rep3_S27/HEK293c12_BxbI_attP_rep3_S27_L001_R1_001.fastq.gz
         fq2: /path/to/cryptic-seq/fastqs/HEK293c12_BxbI_attP_rep3_S27/HEK293c12_BxbI_attP_rep3_S27_L001_R2_001.fastq.gz
@@ -524,7 +524,7 @@ The following steps are performed in the Durant et al. pipeline:
 7. uses the `tomebio-tools durant find-sites` tool to find integration sites.  Keeps templates that:
   - both R1 and R2 map to the genome
   - the template length is 1kb or smaller (implies R1 and R2 map to the same contig!)
-  - R1 has enough mapped bases (default: 25bp) 
+  - R1 has enough mapped bases (default: 25bp)
 For a given template (read pair), the following must be true to be considered an integration:
 
 An example `config.yml` for Durant et al. is shown below:
