@@ -29,6 +29,10 @@ Tools and pipelines for various off-target detection assays:
       - [Converting Snakemake to Nextflow](#converting-snakemake-to-nextflow)
         - [Adding a process](#adding-a-process)
       - [Integration tests](#integration-tests)
+      - [Updating the Nextflow schema](#updating-the-nextflow-schema)
+    - [Deployment](#deployment)
+      - [Cutting a new release and deploying to Seqera Platform](#cutting-a-new-release-and-deploying-to-seqera-platform)
+      - [Cleaning up AWS secrets](#cleaning-up-aws-secrets)
 
 <!---toc end-->
 
@@ -624,8 +628,6 @@ settings:
 
 *** Important ***: `ref_fasta` is the genome _with_ attD, while `genome_fasta` _does not_ contain attD.
 
----
-
 ## Development
 
 #### Python toolkit
@@ -684,7 +686,7 @@ where `ref_dir` is the root directory for references.
 [benchling-link]: https://docs.benchling.com/docs/getting-started
 
 
-#### Updating and validating the nextflow schema
+#### Updating the NextFlow schema
 
 In `src/nextflow/cryptic-seq`, run `nf-core schema lint` to validate that the nextflow schema is valid and compatible with Seqera Platform.
 
@@ -697,7 +699,7 @@ You may ignore warnings for mismatched defaults between the schema (`nexflow_con
 
 The schema is set up to provide convenient default values in the Seqera Platform Launch Template web-form in the "prod" workspace and Launch Template. The default values in the schema are not used when running `nextflow run ...`.
 
----
+## Deployment
 
 ### Cutting a new release and deploying to Seqera Platform
 
@@ -716,7 +718,7 @@ To update launch templates in Seqera Platform workspace(s):
 
 If there are any Nextflow secrets to update and expose to the pipeline, those secrets must be updated and/or added to the Seqera Platform workspace secrets.
 
-#### Cleaning up AWS secrets
+### Cleaning up AWS secrets
 
 As of Seqera Platform v24.2.0 (Aug 20 2024), there is a bug where AWS secrets are not deleted (as described in the documentation) after pipeline termination (after a successful, cancelled, or failed run). For secret name `SECRETNAME` a run with ID `XYZ`, Seqera Platform writes a corresponding secret name `tower-XYZ/SECRETNAME` to AWS Secrets Manager.
 
