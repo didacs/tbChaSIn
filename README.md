@@ -654,6 +654,13 @@ Each process needs to have an associated Docker image. You can use one of the ex
 
 #### Integration tests
 
+First prepare test genomes with:
+
+```console
+bash scripts/build_reference.sh -D ./data -g GCF_000001405.40_GRCh38.p14 -c chr1 -x
+bash scripts/build_reference.sh -D ./data -g GCF_000001635.27_GRCm39 -c chr1 -x
+```
+
 From `src/nextflow/cryptic-seq` run:
 
 ```console
