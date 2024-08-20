@@ -77,6 +77,10 @@ def warehouse_connect(
     sslmode: Optional[str] = None,
     sslrootcert: Optional[str] = None,
 ) -> Connection:
+    # NB: there is a very strange bug on AWS batch where os.getenv here does not
+    # retrieve and/or cache the actual environment variables. The asserts here
+    # fails fast and forces the initial load of the os.environ mapping
+    # if it has not been loaded.
     if username is None:
         assert ENV_WAREHOUSE_USERNAME in os.environ
         username = os.getenv(ENV_WAREHOUSE_USERNAME)

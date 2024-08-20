@@ -210,7 +210,7 @@ bash scripts/docker.sh [-m] [-v VERSION] [-x] [-p]
 
 The `-m` option builds images that are compatible with an ARM Mac. The `-v` option specifies the version with which to tag the images, and must match the `docker_image_version` parameter in [nextflow.config](nextflow.config).
 
-The `-x` option tags images with "prod" (in production) image names.
+By default, the script tags images with "dev" image names with ECR repository URIs matching the "dev" environment (pointing at ECR images in the `tome-fulcrum` AWS account). The `-x` option tags images with "prod" (in production) image names.
 The `-p` option pushes tagged images to ECR.
 
 To build a specific image, run the following command, where `<target>` is the name of the environment configuration file without the `.yml` extension.
@@ -294,7 +294,7 @@ The most common options are:
 To see the full list of options that can be set, run:
 
 ```console
-nextflow run src/nextflow/cryptic-seq -h
+nextflow run src/nextflow/cryptic-seq --help
 ```
 
 Note that the options that are specific to the nextflow command only start with one dash (e.g., `-with-report`) while options that override workflow parameters start with two dashes (e.g. `--metasheet`).
@@ -707,7 +707,7 @@ To update the repository with a new semantic version:
 1. Bump the [semantic version](https://semver.org) of the pipeline in [src/nextflow/cryptic-seq/pipeline.env](src/nextflow/cryptic-seq/pipeline.env)
 The semver should _not_ have a leading "v".
 1. Merge the changes to `main`.
-1. Tag `main` with the same version and push the tag. I.e   `git tag -a "X.Y.Z"`, then `git push origin tag "X.Y.Z"`.
+1. Tag `main` with the same version and push the tag. I.e., `git tag -a "X.Y.Z"`, then `git push origin tag "X.Y.Z"`.
 1. Build and push prod or dev images using `scripts/docker.sh` with the `-p` option (with the `-x` version if pushing to production).
 
 To update launch templates in Seqera Platform workspace(s):

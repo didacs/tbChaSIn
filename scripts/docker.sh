@@ -16,7 +16,7 @@ usage() {
 Usage: $0 [options] [name...]
 
 All images are built unless specific images are listed by name.
-Defaults to tagging images with "dev" ECR repo uri
+Defaults to tagging images with "dev" ECR repo URI.
 
 Optional:
     -s          Build the 'all-in-one' image for the snakemake pipeline
